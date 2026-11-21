@@ -1,7 +1,12 @@
 'use strict';
 const terms = new Map(WORDS.map(w => [w.id,w]));
 const navs = [['studio','compass','Lernstudio'],['library','book-open','Wortschatz'],['test','clipboard-list','Probetest'],['progress','chart-no-axes-column','Lernstand']];
-const worldStyle = {london:['bus-front','#ecdfca','#825a30'],country:['trees','#dbe8d8','#446d49'],phone:['phone-call','#e1e9f0','#42687b'],stories:['notebook-pen','#f2dfd7','#975d43']};
+const worldStyle = {
+  london: ['bus-front', '#eadfff', '#6134aa'],
+  country: ['trees', '#ceefe1', '#176747'],
+  phone: ['phone-call', '#ffe0d1', '#943e22'],
+  stories: ['notebook-pen', '#d9e9fe', '#29588c']
+};
 const KEY='folio-studio-v1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=n=>'<i class="icon" aria-hidden="true" data-lucide="'+n+'"></i>';
@@ -33,23 +38,63 @@ function select(ids,n){return [...ids].sort((a,b)=>rank(a)-rank(b)||(state.cards
 let page='studio', filter='all', query='', playing=null, noticeTimer;
 const session=()=>state.session;
 function notify(msg){const el=document.querySelector('#notice');el.textContent=msg;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el.textContent='',3500)}
-function stopAudio(){if(playing){playing.pause();playing=null}}
-function play(id,kind='word',rate=1){stopAudio();const a=new Audio('audio/'+id+'-'+kind+'.m4a');playing=a;a.playbackRate=rate;a.play().catch(()=>{if(playing===a)notify('Ton konnte nicht starten. Prüfe die Lautstärke und versuche es erneut.')})}
+function stopAudio(){
+  const previous=playing;playing=null;
+  if(previous){previous.pause();previous.remove()}
+  document.querySelector('[data-playing]')?.removeAttribute('data-playing');
+}
+function play(id,kind='word',rate=1,button){
+  stopAudio();
+  const audio=document.createElement('audio');
+  playing=audio;audio.hidden=true;audio.setAttribute('playsinline','');
+  for(const [extension,type] of [['m4a','audio/mp4'],['wav','audio/wav']]){
+    const source=document.createElement('source');
+    source.src='audio/'+id+'-'+kind+'.'+extension;source.type=type;audio.append(source);
+  }
+  document.body.append(audio);audio.defaultPlaybackRate=rate;audio.playbackRate=rate;
+  audio.addEventListener('playing',()=>{if(playing===audio)button?.setAttribute('data-playing','')});
+  audio.addEventListener('ended',()=>{if(playing===audio)stopAudio()});
+  const failed=()=>{
+    if(playing!==audio)return;
+    stopAudio();notify('Die Aufnahme konnte nicht abgespielt werden. Öffne das Lernstudio in Safari oder Chrome.');
+  };
+  audio.lastElementChild.addEventListener('error',failed);
+  audio.addEventListener('error',failed);
+  audio.play().catch(failed);
+}
 function audioButtons(w){return '<div class="actions">'+act('audio',icon('volume-2')+' Anhören','ghost',w.id)+act('slow',icon('snail')+' Langsam','ghost',w.id)+'</div>'}
 const countLabel=n=>n===1?'1 Wortkarte':n+' Wortkarten';
 function shell(title,html){
   releaseRecording();
   document.body.classList.toggle('focused',page==='run');
-  document.querySelector('#rail').innerHTML='<button class="brand" data-action="nav" data-id="studio"><span class="brandmark">'+icon('origami')+'</span><span><strong>Folio</strong><small>Lernstudio</small></span></button><p class="rail-label">Dein Bereich</p><nav aria-label="Hauptmenü">'+navs.map(([id,ic,label])=>'<button class="navitem '+(page===id?'active':'')+'" '+(page===id?'aria-current="page"':'')+' data-action="nav" data-id="'+id+'">'+icon(ic)+label+'</button>').join('')+'</nav><div class="railfoot">'+icon('book-marked')+' Buchseiten 154–156</div>';
-  main.innerHTML='<div class="wrap"><div class="topline"><span class="crumb">'+icon('book-open')+' Englisch '+icon('chevron-right')+' '+esc(title)+'</span><span class="topdate">Test · Mo, 23. November</span></div>'+html+'</div>';
+  const navigation=navs.map(([id,ic,label])=>`<button class="navitem ${page===id?'active':''}" ${page===id?'aria-current="page"':''} data-action="nav" data-id="${id}">${icon(ic)}${label}</button>`).join('');
+  document.querySelector('#rail').innerHTML=`<div class="navwrap">
+    <button class="brand" data-action="nav" data-id="studio" aria-label="Zur Startseite des Lernstudios"><span class="brandmark">${icon('layers-3')}</span><strong>Lernstudio</strong></button>
+    <nav aria-label="Hauptmenü">${navigation}</nav>
+    <span class="subject">${icon('book-open')} Englisch</span>
+  </div>`;
+  main.innerHTML='<div class="wrap">'+html+'</div>';
   lucide.createIcons();
 }
 function intro(h,p=''){return '<header class="intro"><h1>'+h+'</h1>'+(p?'<p>'+p+'</p>':'')+'</header>'}
 function stamp(id){const [ic,bg,fg]=worldStyle[id];return '<span class="stamp" style="--shade:'+bg+';--tone:'+fg+'">'+icon(ic)+'</span>'}
 function home(){
   const s=session(), done=Object.values(state.cards).filter(c=>c.introduced).length;
-  const worlds=SCENES.map(w=>'<button class="tile" data-action="world" data-id="'+w.id+'">'+stamp(w.id)+'<span class="count">'+w.ids.length+' Karten</span><strong>'+w.name+'</strong><span class="caption">'+w.description+'</span></button>').join('');
-  shell('Lernstudio',intro('Dein Lernstudio','Entdecke das Englisch aus deinem Schulbuch.')+'<section class="hero"><div class="hero-content"><div class="eyebrow">'+icon('compass')+' '+(s?'Deine offene Runde':'Englisch · Lernreise')+'</div><h2>'+(s?esc(s.label):'London Calling')+'</h2><p>'+(s?'Dein Platz in der Runde ist gespeichert.':'Eine kurze Runde durch London. Drei Wortkarten für unterwegs.')+'</p>'+act(s?'resume':'world',icon(s?'play':'arrow-right')+(s?' Runde fortsetzen':' Runde starten'),'btn','london')+'</div></section><div class="section-head"><h2>Deine Lernwelten</h2><span class="caption">Buchseiten 154–156</span></div><div class="worlds">'+worlds+'</div><div class="studiofoot"><div class="row">'+icon('library-big')+'<div><b>Dein Wortschatz</b><p>'+done+' von '+WORDS.length+' Karten kennengelernt</p></div></div>'+act('nav','Alle Karten '+icon('arrow-right'),'textbtn','library')+'</div>');
+  const worlds=SCENES.map(w=>`<button class="tile" data-action="world" data-id="${w.id}">
+    <span class="tile-top">${stamp(w.id)}<span class="tile-arrow">${icon('arrow-up-right')}</span></span>
+    <strong>${esc(w.name)}</strong><span class="caption">${w.ids.length} Wortkarten</span>
+  </button>`).join('');
+  const london=!s||s.world==='london';
+  const art=london?'<img class="hero-art" src="assets/london-studio.jpg" alt="">':`<div class="resume-art" aria-hidden="true">${icon(s.world?worldStyle[s.world][0]:'book-open')}</div>`;
+  shell('Lernstudio',`<header class="intro home-intro"><div><h1>Dein Lernstudio</h1><p>Englisch aus deinem Schulbuch · Seiten 154–156</p></div><span class="test-date">${icon('calendar-days')} Test am 23. November</span></header>
+    <section class="hero">${art}<div class="hero-content"><div class="eyebrow">${icon('headphones')}${s?'Deine offene Runde':'Hören · Sprechen · Schreiben'}</div>
+    <h2>${s?esc(s.label):'London Calling'}</h2><p>${s?'Mach an der Stelle weiter, an der du aufgehört hast.':'Entdecke London in einer Runde mit drei Wortkarten.'}</p>
+    ${act(s?'resume':'world',(s?'Runde fortsetzen':'Runde starten')+icon('arrow-right'),'btn','london')}</div></section>
+    <div class="section-head"><h2>Deine Lernwelten</h2><span class="caption">4 Themen</span></div>
+    <div class="worlds">${worlds}</div>
+    <div class="studiofoot"><div class="row"><span class="collection-icon">${icon('library-big')}</span><div><b>Dein Wortschatz</b><p>${done} von ${WORDS.length} Karten kennengelernt</p></div></div>
+    ${act('nav','Alle Karten '+icon('arrow-right'),'textbtn','library')}</div>`);
+
 }
 function rows(){
   const q=query.toLocaleLowerCase().trim();
@@ -195,7 +240,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('click',e=>{
   const btn=e.target.closest('[data-action]');if(!btn)return;
   const {action,id}=btn.dataset;
-  if(['audio','slow','example'].includes(action)){play(id,action==='example'?'example':'word',action==='slow'?0.76:1);return}
+  if(['audio','slow','example'].includes(action)){play(id,action==='example'?'example':'word',action==='slow'?0.76:1,btn);return}
   if(['world','single','retry','probe'].includes(action)){begin(proposed(action,id));return}
   switch(action){
     case 'record':toggleRecording(btn);break;

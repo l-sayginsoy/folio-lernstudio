@@ -1,4 +1,4 @@
-# Folio · Englisch-Lernstudio
+# Lernstudio · Englisch
 
 Lern-App für einen Englischtest (Montag, 23.11.2026). Der Stoff sind die Vokabelseiten 154–156 des Schulbuchs.
 Die App ist für einen 14-jährigen Schüler mit Lernschwierigkeiten gedacht: kurze Runden, Hören, Sprechen und vor allem selbst schreiben.
@@ -18,10 +18,10 @@ Die App läuft komplett im Browser, auf Handy und Laptop. Der Lernstand wird nur
 | `situations.js` | Kleine Alltagsszenen pro Lernwelt |
 | `lernblatt-englisch-test.html` | Druckstudio: Probetest und Schreibtraining mit Lösungen |
 | `audio/` | Fertige Tonaufnahmen: `<id>-word.m4a` und `<id>-example.m4a` |
-| `assets/` | Schrift (DM Sans, OFL) und Icons (Lucide, ISC) |
+| `assets/` | Schrift (DM Sans, OFL), Icons (Lucide, ISC) und die eigens für Lernstudio mit Imagegen erstellte London-Bus-Illustration |
 | `tools/make-audio.mjs` | Erzeugt die Tonaufnahmen mit einer macOS-Stimme (`say`) |
 | `tools/studio-server.mjs`, `tools/FolioTutor.swift` | Optional, nur lokal auf dem Mac: KI-Erklärungen mit dem Apple-Sprachmodell auf dem Gerät |
-| `Folio starten.command` | Startet die App lokal mit KI-Erklärungen (nur Mac) |
+| `Lernstudio starten.command` | Startet die App lokal mit KI-Erklärungen (nur Mac) |
 
 ## Ablauf einer Runde
 
@@ -52,7 +52,7 @@ python3 -m http.server 8000
 
 Dann http://localhost:8000 öffnen.
 
-Mit KI-Erklärungen (macOS mit Apple Intelligence): `Folio starten.command` doppelklicken.
+Mit KI-Erklärungen (macOS mit Apple Intelligence): `Lernstudio starten.command` doppelklicken.
 
 ## Änderungen veröffentlichen
 

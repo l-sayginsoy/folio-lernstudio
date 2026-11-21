@@ -15,6 +15,9 @@ try {
       const file=join(dir,w.id+'-'+part+'.m4a');
       execFileSync('afconvert',['-f','m4af','-d','aac',join(scratch,'line.aiff'),file+'.tmp']);
       renameSync(file+'.tmp',file);
+      const wav=join(dir,w.id+'-'+part+'.wav');
+      execFileSync('afconvert',['-f','WAVE','-d','LEI16',file,wav+'.tmp']);
+      renameSync(wav+'.tmp',wav);
     }
   }
 } finally {rmSync(scratch,{recursive:true,force:true})}
