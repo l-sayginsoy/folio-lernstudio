@@ -160,7 +160,7 @@ function record(w,ok,independent){
   c.validated=days.slice(-2);
 }
 function advance(){
-  const s=session();s.index++;s.phase='ask';s.draft='';s.chosen=null;s.result=null;s.helped=false;s.attempt='';stopAudio();
+  const s=session();s.index++;s.phase='ask';s.draft='';s.chosen=null;s.result=null;s.helped=false;s.attempt='';s.wrong=0;s.retryWrong=0;s.lastWrong='';stopAudio();
   if(s.index===s.steps.length){
     if(!s.test && s.finalIds.length){s.steps.push(...shuffle(s.finalIds).map(id=>({id,kind:'write'})));s.finalIds=[]}
     else if(s.test && s.mode==='paper'&&!s.checked){s.steps.push(...s.ids.map((id,i)=>({id,kind:'grade',number:i+1})));s.checked=true}
@@ -188,7 +188,23 @@ function assess(ok){
   }
   // Nicht gewusst oder falsch geschrieben: Lösung zeigen, selbst einmal richtig schreiben,
   // am Ende der Runde noch einmal ohne Hilfe. Die Aufgabe wird nicht übersprungen.
-  s.attempt=s.draft;s.draft='';s.phase='help';save();render();
+  s.wrong=(s.wrong||0)+1;s.lastWrong=s.draft;if(s.mode==='paper')s.draft='';
+  s.phase='ask';save();render();
+}
+// Rote Meldung bei falscher Antwort; ab dem 2. Versuch ein kleiner Tipp
+function wrongBox(w,n,paper){
+  return '<div class="wrongbox" role="alert">'+icon('x')+'<div><b>Noch nicht richtig.</b> '+(paper?'Probier es nochmal auf deinem Papier.':'Probier es nochmal.')
+    +(n>=2?'<br><span class="hint">Tipp: Es fängt mit „'+esc(w.en.slice(0,1))+'“ an.</span>':'')+'</div></div>';
+}
+function needHelp(){
+  const s=session(),st=current(),w=terms.get(st.id);
+  record(w,false);s.results[w.id]='again';s.attempt=s.lastWrong||'';s.draft='';s.phase='help';save();render();
+}
+function skipTask(){
+  const s=session(),st=current(),w=terms.get(st.id);
+  record(w,false);if(!(w.id in s.results)||s.results[w.id]!=='later')s.results[w.id]='again';
+  if(!st.again&&!st.queued){s.steps.push({kind:'write',id:st.id,again:true});st.queued=true;notify('Kein Problem. Das Wort kommt am Ende der Runde noch einmal.')}
+  advance();
 }
 function retryResult(ok){
   const s=session(),st=current();
@@ -196,7 +212,7 @@ function retryResult(ok){
     if(!st.again&&!st.queued){s.steps.push({kind:'write',id:st.id,again:true});st.queued=true}
     s.helped=true;s.result=true;s.phase='feedback';save();render();return;
   }
-  s.attempt=s.draft;s.draft='';s.phase='help';notify('Noch nicht ganz. Schau dir das Wort noch einmal an.');save();render();
+  s.retryWrong=(s.retryWrong||0)+1;if(s.mode==='paper')s.draft='';s.phase='retry';save();render();
 }
 function finishHelp(){
   const s=session(),st=current();
@@ -206,7 +222,7 @@ function finishHelp(){
 }
 function goBack(){
   const s=session();if(!s||s.index===0)return;
-  s.index--;s.phase='ask';s.draft='';s.chosen=null;s.result=null;s.attempt='';stopAudio();save();render();
+  s.index--;s.phase='ask';s.draft='';s.chosen=null;s.result=null;s.attempt='';s.wrong=0;s.retryWrong=0;s.lastWrong='';stopAudio();save();render();
 }
 function postpone(){
   const s=session();
@@ -245,6 +261,7 @@ function runView(){
   const s=session();if(!s){navigate('studio');return}
   if(s.phase==='done'){shell(s.label,'<section class="training">'+summary()+'</section>');return}
   const st=current(),w=terms.get(st.id),paper=s.mode==='paper';
+  const bad=(s.phase==='retry'?s.retryWrong:s.wrong)?' wrong':'';
   const lab={check:'Schon bekannt?',learn:'Entdecken',listen:'Hörverständnis',write:'Aus dem Kopf',test:'Probetest',grade:'Papier vergleichen',scene:'Vor Ort'}[st.kind];
   let inner='';
   if(st.kind==='scene'){
@@ -258,8 +275,9 @@ function runView(){
       +(s.attempt?spellingHelp(w,s.attempt):(w.tip?'<div class="helper">'+esc(w.tip)+'</div>':''))
       +'<p><b>Merk dir das Wort.</b> Dann deckst du es ab und schreibst es selbst.</p><div class="actions">'+act('cover','Ich hab’s mir gemerkt '+icon('arrow-right'))+'</div>';
   }else if(s.phase==='retry'){
-    inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(paper?'<p class="helper">Schreib es auf dein Papier.</p><div class="actions">'+act('submit','Mit Lösung vergleichen')+'</div>'
-      :'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">Antwort prüfen</button></form>');
+    inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(s.retryWrong?wrongBox(w,s.retryWrong,paper):'')+(paper?'<p class="helper">Schreib es auf dein Papier.</p><div class="actions">'+act('submit','Mit Lösung vergleichen')+'</div>'
+      :'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">Antwort prüfen</button></form>')
+      +(s.retryWrong?'<div class="actions">'+act('showhelp','Lösung nochmal ansehen','textbtn')+act('skip','Zur nächsten Aufgabe '+icon('arrow-right'),'textbtn')+'</div>':'');
   }else if(s.phase==='retrycompare'){
     inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche mit deinem Papier. Stimmt jeder Buchstabe?</p><div class="actions">'+act('retryyes','Stimmt')+act('retryno','Noch nicht','ghost')+'</div>';
   }else if(s.phase==='feedback'){
@@ -275,7 +293,7 @@ function runView(){
   }else{
     const number=s.ids.indexOf(w.id)+1;
     const question=st.kind==='test'?'Aufgabe '+number+' von '+s.ids.length:st.kind==='check'?'Kennst du das schon auf Englisch?':'Wie schreibst du das auf Englisch?';
-    inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(paper?'<p class="helper">'+(st.kind==='test'?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">'+(st.kind==='test'?'Antwort speichern':'Antwort prüfen')+'</button></form>')+'<div class="actions">'+(paper?act('submit',st.kind==='test'?'Antwort notiert':'Mit Lösung vergleichen'):'')+act('unknown',st.kind==='check'?'Zeig es mir':st.kind==='test'?'Auslassen':'Ich brauche Hilfe','textbtn')+'</div>';
+    inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(s.wrong&&st.kind!=='test'?wrongBox(w,s.wrong,paper):'')+(paper?'<p class="helper">'+(st.kind==='test'?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">'+(st.kind==='test'?'Antwort speichern':'Antwort prüfen')+'</button></form>')+'<div class="actions">'+(paper?act('submit',st.kind==='test'?'Antwort notiert':'Mit Lösung vergleichen'):'')+act('unknown',st.kind==='check'?'Zeig es mir':st.kind==='test'?'Auslassen':'Ich brauche Hilfe','textbtn')+(st.kind==='write'&&s.wrong?act('skip','Zur nächsten Aufgabe '+icon('arrow-right'),'textbtn'):'')+'</div>';
     if(st.kind==='check')inner+=modes();
   }
   const total=s.steps.length+s.finalIds.length;
@@ -284,7 +302,7 @@ function runView(){
   const progress=s.index/total*100;
   const canBack=s.index>0;
   const canLater=['listen','write','test','grade','scene'].includes(st.kind)&&(s.index<s.steps.length-1||s.finalIds.length>0);
-  const stepnav='<div class="stepnav">'+(canBack?act('back',icon('arrow-left')+' Zurück','textbtn quietbtn'):'<span></span>')+(canLater&&s.phase==='ask'?act('later','Später','textbtn quietbtn'):'')+'</div>';
+  const stepnav='<div class="stepnav">'+(canBack?act('back',icon('arrow-left')+' Zurück','textbtn quietbtn'):'<span></span>')+'</div>';
   shell(s.label,'<section class="training"><div class="trainer-top"><span class="row">'+(s.world?stamp(s.world):icon('book-open'))+'<span><strong>'+esc(s.label)+'</strong><small class="stepcount">'+esc(position)+'</small></span></span>'+act('pause',icon('pause')+' Pause','ghost')+'</div><div class="track" aria-label="Fortschritt"><i style="width:'+progress+'%"></i></div><article class="panel exercise"><div class="eyebrow">'+icon('bookmark')+' '+lab+(w?' · Seite '+w.page:' · '+esc(s.label))+'</div>'+inner+'</article>'+stepnav+'</section>');
 }
 function submit(){
@@ -336,9 +354,11 @@ document.addEventListener('click',e=>{
     case 'cover':session().phase='retry';session().draft='';save();render();break;
     case 'retryyes':retryResult(true);break;
     case 'retryno':session().draft='';retryResult(false);break;
+    case 'skip':skipTask();break;
+    case 'showhelp':session().phase='help';session().draft='';save();render();break;
     case 'yes':assess(true);break;
     case 'no':assess(false);break;
-    case 'unknown':if(session().test&&session().mode==='paper'){advance();break}if(session().test){session().answers??={};session().answers[current().id]=''}assess(false);break;
+    case 'unknown':if(session().test&&session().mode==='paper'){advance();break}if(session().test){session().answers??={};session().answers[current().id]=''}if(current().kind==='write'){needHelp();break}assess(false);break;
     case 'scene':session().chosen=id;save();render();break;
     case 'listen':session().chosen=id;if(current().id===id){const c=item(id);c.heard=(c.heard||0)+1}save();render();break;
     case 'finish':state.session=null;save();navigate('studio');break;
