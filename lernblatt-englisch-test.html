@@ -1,11 +1,68 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lernstudio · Druckstudio</title><link rel="stylesheet" href="studio.css?v=202611221315"><style>
-body{padding:24px}.printtools,.sheet{max-width:800px;margin:0 auto 20px}.printtools{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.sheet{background:#fffefb;padding:32px;border:1px solid var(--line);border-radius:12px}.sheet h1{font-size:36px;margin:12px 0}.sheet h2{margin:20px 0 10px;font-size:24px}.wline{display:grid;grid-template-columns:32px 1fr 1fr;gap:10px;align-items:end;padding:11px 0;break-inside:avoid;border-bottom:1px solid var(--line)}.line{min-height:20px;border-bottom:1px solid #7a837d}.num{color:var(--muted);font-size:12px}.sheet footer{margin-top:16px;font-size:12px}.solutions{display:grid;gap:9px}.solutions div{break-inside:avoid}label{font-weight:600}select{max-width:100%}@page{size:A4;margin:15mm}@media print{body{padding:0;background:white}.printtools{display:none}.sheet{border:0;margin:0;border-radius:0;padding:0;background:white}.sheet+.sheet{break-before:page}.wline{padding:8px 0}.sheet h2{font-size:20px}}@media(max-width:500px){body{padding:12px}.sheet{padding:18px}.wline{grid-template-columns:20px 1.1fr .9fr}}
-</style></head><body><div class="printtools"><a href="index.html">← Lernstudio</a><label>Auswahl <select id="scope"><option value="mixed">Probetest · alle drei Seiten</option><option>154</option><option>155</option><option>156</option></select></label><button class="btn" id="print">Drucken</button><button class="ghost" id="mix">Neu mischen</button></div><div id="sheets"></div><script src="words.js?v=202611221315"></script><script>
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lernstudio · Druckstudio</title><link rel="stylesheet" href="studio.css?v=202611221400"><style>
+body{padding:24px}.printtools,.sheet{max-width:800px;margin:0 auto 20px}.printtools{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.sheet{background:#fffefb;padding:32px;border:1px solid var(--line);border-radius:12px}.sheet h1{font-size:34px;margin:10px 0}.sheet h2{margin:22px 0 8px;font-size:22px}
+.intro-text{margin:0 0 10px}
+.wline{display:grid;grid-template-columns:32px 1fr 1fr;gap:10px;align-items:end;padding:11px 0;break-inside:avoid;border-bottom:1px solid var(--line)}.line{min-height:20px;border-bottom:1px solid #7a837d}.num{color:var(--muted);font-size:12px}
+.wlist{width:100%;border-collapse:collapse;margin:4px 0 8px}.wlist tr{break-inside:avoid}.wlist td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}.wlist td.en{font-weight:800;font-size:18px;width:34%}.wlist td.de{width:30%}.wlist td.tip{font-size:13px;color:var(--muted)}
+.wlist mark{background:#ffe7b3;border-radius:3px;padding:0 1px}
+.sheet footer{margin-top:16px;font-size:12px}.solutions{display:grid;gap:7px}.solutions div{break-inside:avoid}.solutions h2{margin-top:14px}
+label{font-weight:600}select{max-width:100%;font-size:16px;padding:8px}
+@page{size:A4;margin:14mm}
+@media print{html,body{background:#fff!important}body{padding:0}.printtools{display:none}.sheet{border:0;margin:0;border-radius:0;padding:0;background:white}.sheet+.sheet{break-before:page}.wline{padding:8px 0}.sheet h1{font-size:28px}.sheet h2{font-size:19px;break-after:avoid}.wlist mark{background:#ffe7b3;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media(max-width:500px){body{padding:12px}.sheet{padding:18px}.wline{grid-template-columns:20px 1.1fr .9fr}}
+</style></head><body>
+<div class="printtools">
+  <a href="index.html">← Lernstudio</a>
+  <label>Was drucken? <select id="scope"></select></label>
+  <button class="btn" id="print">Drucken</button>
+  <button class="ghost" id="mix">Neu mischen</button>
+</div>
+<div id="sheets"></div>
+<script src="words.js?v=202611221400"></script>
+<script>
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const byId=new Map(WORDS.map(w=>[w.id,w]));
 function shuffled(arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function draw(){const p=document.querySelector('#scope').value;
-const cards=p==='mixed'?shuffled([154,155,156].flatMap(n=>shuffled(WORDS.filter(w=>w.page===n)).slice(0,3))):shuffled(WORDS.filter(w=>w.page===Number(p))).slice(0,10);
-const title=p==='mixed'?'Probetest':'Schreibtraining · Seite '+p;
-document.querySelector('#sheets').innerHTML='<section class="sheet"><div class="eyebrow">Lernstudio / Englisch · S. 154–156</div><h1>'+title+'</h1><p>Schreibe die englischen Wörter oder Sätze aus dem Kopf. Lass eine Zeile frei, wenn dir die Antwort noch fehlt.</p>'+cards.map((w,i)=>'<div class="wline"><span class="num">'+(i+1)+'</span><span>'+esc(w.prompt)+'</span><span class="line"></span></div>').join('')+'<footer>Die Lösungen stehen auf dem zweiten Blatt.</footer></section><section class="sheet"><div class="eyebrow">Lernstudio / Selbstkontrolle</div><h1>Lösungen</h1><div class="solutions">'+cards.map((w,i)=>'<div><b>'+(i+1)+'. '+esc(w.en)+'</b> · '+esc(w.de)+(w.ans.length>1?'<p class="caption">Auch möglich: '+w.ans.slice(1).map(esc).join(' · ')+'</p>':'')+'</div>').join('')+'</div><footer>Ausgeschriebene Formen und passende Kurzformen gelten gleichwertig.</footer></section>'}
-document.querySelector('#scope').onchange=draw;document.querySelector('#mix').onclick=draw;document.querySelector('#print').onclick=()=>window.print();draw()
+function hl(w){const bits=(w.hl||[]).filter(x=>w.en.includes(x));if(!bits.length)return esc(w.en);let t=w.en,h='';while(t.length){const hit=bits.find(x=>t.startsWith(x));h+=hit?'<mark>'+esc(hit)+'</mark>':esc(t[0]);t=t.slice(hit?hit.length:1)}return h}
+const chapters=SCENES.map((s,i)=>({no:i+1,id:s.id,name:s.name,words:s.ids.map(id=>byId.get(id)).filter(Boolean)}));
+const total=chapters.reduce((n,c)=>n+c.words.length,0);
+
+// Auswahl: alles zusammen, Wortlisten, Schreibblätter, Probetest
+const opts=[['pack','Alles: Wortliste, Schreibblatt und Lösungen ('+total+' Wörter)'],
+  ['list-all','Wortliste zum Lernen · alle '+total+' Wörter'],
+  ...chapters.map(c=>['list-'+c.id,'Wortliste · Kapitel '+c.no+': '+c.name]),
+  ['write-all','Schreibblatt mit Lösungen · alle '+total+' Wörter'],
+  ...chapters.map(c=>['write-'+c.id,'Schreibblatt · Kapitel '+c.no+': '+c.name]),
+  ['mixed','Probetest · 9 gemischte Wörter']];
+document.querySelector('#scope').innerHTML=opts.map(([v,l])=>'<option value="'+v+'">'+esc(l)+'</option>').join('');
+
+const head=(eyebrow,title,text)=>'<div class="eyebrow">'+esc(eyebrow)+'</div><h1>'+esc(title)+'</h1>'+(text?'<p class="intro-text">'+text+'</p>':'');
+function listSheet(chs){
+  return '<section class="sheet">'+head('Lernstudio / Englisch · S. 154–156','Wortliste zum Lernen','Lies jedes Wort laut. Die markierte Stelle ist die Stolperstelle beim Schreiben.')
+    +chs.map(c=>'<h2>Kapitel '+c.no+': '+esc(c.name)+'</h2><table class="wlist">'+c.words.map(w=>'<tr><td class="en">'+hl(w)+'</td><td class="de">'+esc(w.de)+'</td><td class="tip">'+esc(w.tip||'')+'</td></tr>').join('')+'</table>').join('')+'</section>';
+}
+function writeSheets(chs,title,mix){
+  let n=0;const numbered=chs.map(c=>({...c,items:(mix?shuffled(c.words):c.words).map(w=>({w,n:++n}))}));
+  const heading=c=>chs.length>1?'<h2>Kapitel '+c.no+': '+esc(c.name)+'</h2>':'';
+  const sheet='<section class="sheet">'+head('Lernstudio / Englisch · S. 154–156',title,'Schreib das englische Wort aus dem Kopf. Wenn du es nicht weißt, lass die Zeile frei und mach weiter.')
+    +numbered.map(c=>heading(c)+c.items.map(({w,n})=>'<div class="wline"><span class="num">'+n+'</span><span>'+esc(w.prompt)+'</span><span class="line"></span></div>').join('')).join('')
+    +'<footer>Die Lösungen stehen auf dem nächsten Blatt.</footer></section>';
+  const sol='<section class="sheet">'+head('Lernstudio / Selbstkontrolle','Lösungen','')+'<div class="solutions">'
+    +numbered.map(c=>heading(c)+c.items.map(({w,n})=>'<div><b>'+n+'. '+esc(w.en)+'</b> · '+esc(w.de)+(w.ans.length>1?'<span class="caption"> · auch richtig: '+w.ans.slice(1).map(esc).join(' / ')+'</span>':'')+'</div>').join('')).join('')
+    +'</div><footer>Ausgeschriebene Formen und passende Kurzformen gelten gleichwertig.</footer></section>';
+  return sheet+sol;
+}
+function draw(){
+  const v=document.querySelector('#scope').value,one=id=>chapters.filter(c=>c.id===id);
+  let html;
+  if(v==='pack')html=listSheet(chapters)+writeSheets(chapters,'Schreibblatt · alle Wörter',true);
+  else if(v==='list-all')html=listSheet(chapters);
+  else if(v.startsWith('list-'))html=listSheet(one(v.slice(5)));
+  else if(v==='write-all')html=writeSheets(chapters,'Schreibblatt · alle Wörter',true);
+  else if(v.startsWith('write-')){const c=one(v.slice(6));html=writeSheets(c,'Schreibblatt · Kapitel '+c[0].no+': '+c[0].name,true)}
+  else{const cards=shuffled([154,155,156].flatMap(p=>shuffled(WORDS.filter(w=>w.page===p)).slice(0,3)));html=writeSheets([{no:0,name:'',words:cards}],'Probetest',false)}
+  document.querySelector('#sheets').innerHTML=html;
+  document.querySelector('#mix').hidden=v.startsWith('list-');
+}
+document.querySelector('#scope').onchange=draw;document.querySelector('#mix').onclick=draw;document.querySelector('#print').onclick=()=>window.print();draw();
 </script></body></html>
