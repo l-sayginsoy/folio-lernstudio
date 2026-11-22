@@ -113,3 +113,12 @@ button[data-playing]{background:var(--soft);border-color:var(--accent);color:var
 .solution{font-size:clamp(30px,5vw,44px);font-weight:800;letter-spacing:-.02em;margin:6px 0 4px;overflow-wrap:anywhere}
 .chapterbox{margin-top:14px;padding:18px;border-radius:14px;background:var(--soft)}
 .chapterbox h3{font-size:18px}
+/* Einfacher Ablauf: großer grüner Haken, ruhige Navigation */
+.success{width:84px;height:84px;margin:6px auto 4px;border-radius:50%;background:#1f9d5c;color:#fff;display:grid;place-items:center;box-shadow:0 6px 18px #1f9d5c40}
+.success .icon{width:48px;height:48px;stroke-width:3}
+.center{text-align:center;justify-content:center}
+.resultline .ok{color:#1f9d5c}.resultline .ok .icon{width:26px;height:26px;stroke-width:3}
+.resultline .again{color:var(--muted);font-size:14px}
+.quietbtn{font-weight:600;color:var(--muted);font-size:15px}
+@media (prefers-reduced-motion:no-preference){.success{animation:pop .35s ease-out}@keyframes pop{from{transform:scale(.7)}to{transform:scale(1)}}}
+.actions.center{display:flex;flex-wrap:wrap;width:100%}
