@@ -160,7 +160,7 @@ function record(w,ok,independent){
   c.validated=days.slice(-2);
 }
 function advance(){
-  const s=session();s.index++;s.phase='ask';s.draft='';s.chosen=null;s.result=null;stopAudio();
+  const s=session();s.index++;s.phase='ask';s.draft='';s.chosen=null;s.result=null;s.helped=false;s.attempt='';stopAudio();
   if(s.index===s.steps.length){
     if(!s.test && s.finalIds.length){s.steps.push(...shuffle(s.finalIds).map(id=>({id,kind:'write'})));s.finalIds=[]}
     else if(s.test && s.mode==='paper'&&!s.checked){s.steps.push(...s.ids.map((id,i)=>({id,kind:'grade',number:i+1})));s.checked=true}
@@ -189,6 +189,14 @@ function assess(ok){
   // Nicht gewusst oder falsch geschrieben: Lösung zeigen, selbst einmal richtig schreiben,
   // am Ende der Runde noch einmal ohne Hilfe. Die Aufgabe wird nicht übersprungen.
   s.attempt=s.draft;s.draft='';s.phase='help';save();render();
+}
+function retryResult(ok){
+  const s=session(),st=current();
+  if(ok){
+    if(!st.again&&!st.queued){s.steps.push({kind:'write',id:st.id,again:true});st.queued=true}
+    s.helped=true;s.result=true;s.phase='feedback';save();render();return;
+  }
+  s.attempt=s.draft;s.draft='';s.phase='help';notify('Noch nicht ganz. Schau dir das Wort noch einmal an.');save();render();
 }
 function finishHelp(){
   const s=session(),st=current();
@@ -248,11 +256,15 @@ function runView(){
   }else if(s.phase==='help'){
     inner='<h2>'+esc(w.prompt)+'</h2><p>So schreibt man es:</p><p class="solution" lang="en">'+highlight(w)+'</p>'+audioButtons(w)
       +(s.attempt?spellingHelp(w,s.attempt):(w.tip?'<div class="helper">'+esc(w.tip)+'</div>':''))
-      +(paper?'<p class="helper warn"><b>Jetzt du:</b> Schreib es einmal richtig auf dein Papier. '+(st.again?'':'Am Ende der Runde kommt es noch einmal ohne Hilfe.')+'</p><div class="actions">'+act('copied','Abgeschrieben '+icon('check'))+'</div>'
-      :'<p><b>Jetzt du:</b> Tipp es einmal richtig ab. '+(st.again?'':'Am Ende der Runde kommt es noch einmal ohne Hilfe.')+'</p><form id="copying"><label class="sr" for="copy">Abschreiben</label><input class="entry" id="copy" lang="en" placeholder="Hier abschreiben" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">Prüfen</button></form>');
+      +'<p><b>Merk dir das Wort.</b> Dann deckst du es ab und schreibst es selbst.</p><div class="actions">'+act('cover','Ich hab’s mir gemerkt '+icon('arrow-right'))+'</div>';
+  }else if(s.phase==='retry'){
+    inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(paper?'<p class="helper">Schreib es auf dein Papier.</p><div class="actions">'+act('submit','Mit Lösung vergleichen')+'</div>'
+      :'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">Antwort prüfen</button></form>');
+  }else if(s.phase==='retrycompare'){
+    inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche mit deinem Papier. Stimmt jeder Buchstabe?</p><div class="actions">'+act('retryyes','Stimmt')+act('retryno','Noch nicht','ghost')+'</div>';
   }else if(s.phase==='feedback'){
     const yes=s.result;
-    inner=yes?'<div class="success" role="img" aria-label="Richtig">'+icon('check')+'</div><h2 class="center">Richtig!</h2><p class="large center"><b lang="en">'+highlight(w)+'</b></p><div class="actions center">'+act('next','Weiter '+icon('arrow-right'))+'</div>'
+    inner=yes?'<div class="success" role="img" aria-label="Richtig">'+icon('check')+'</div><h2 class="center">Richtig!</h2><p class="large center"><b lang="en">'+highlight(w)+'</b></p>'+(s.helped&&!st.again?'<p class="caption center">Am Ende der Runde kommt das Wort noch einmal.</p>':'')+'<div class="actions center">'+act('next','Weiter '+icon('arrow-right'))+'</div>'
       :'<h2>Schau noch einmal hin.</h2><p class="large"><b lang="en">'+highlight(w)+'</b> · '+esc(w.de)+'</p>'+(s.draft?spellingHelp(w,s.draft):'')+'<div class="actions">'+act('next','Weiter '+icon('arrow-right'))+'</div>';
   }else if(st.kind==='learn'){
     inner='<h2 lang="en">'+highlight(w)+'</h2><p class="large">'+esc(w.de)+'</p>'+audioButtons(w)+(w.tip?'<p class="helper">'+esc(w.tip)+'</p>':'')+'<p>Hör es dir an und sag es laut nach.</p><div class="actions">'+act('next','Weiter '+icon('arrow-right'))+'</div>';
@@ -277,6 +289,11 @@ function runView(){
 }
 function submit(){
   const s=session(),st=current();
+  if(s.phase==='retry'){
+    if(s.mode==='paper'){s.phase='retrycompare';save();render();return}
+    if(!s.draft.trim()){notify('Schreib das Wort aus dem Kopf.');return}
+    retryResult(correct(terms.get(st.id),s.draft));return;
+  }
   if(s.mode==='paper'){
     if(st.kind==='test'){advance();return}
     s.phase='compare';save();render();return;
@@ -316,6 +333,9 @@ document.addEventListener('click',e=>{
     case 'back':goBack();break;
     case 'later':postpone();break;
     case 'copied':finishHelp();break;
+    case 'cover':session().phase='retry';session().draft='';save();render();break;
+    case 'retryyes':retryResult(true);break;
+    case 'retryno':session().draft='';retryResult(false);break;
     case 'yes':assess(true);break;
     case 'no':assess(false);break;
     case 'unknown':if(session().test&&session().mode==='paper'){advance();break}if(session().test){session().answers??={};session().answers[current().id]=''}assess(false);break;
