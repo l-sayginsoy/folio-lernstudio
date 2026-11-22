@@ -246,7 +246,7 @@ function summary(){
       +(others?'<p class="caption center">Noch offen · '+others+'</p>':'')
       +'<div class="actions center">'+(target?act('world','Nächste Runde '+icon('arrow-right'),'btn',target.id):'')+(open&&after?act('world','Zum nächsten Kapitel','textbtn',after.id):'')+act('finish','Fertig für jetzt','textbtn')+'</div>';
   }
-  return '<div class="panel exercise stack"><div class="success" role="img" aria-label="Geschafft">'+icon('check')+'</div><h2 class="center">'+(s.test?'Dein Ergebnis':'Runde geschafft!')+'</h2><p class="large center">'+score+' von '+s.ids.length+' richtig geschrieben</p>'+lines+next+'</div>';
+  return '<div class="panel exercise stack">'+(score?'<div class="success" role="img" aria-label="Geschafft">'+icon('check')+'</div>':'')+'<h2 class="center">'+(s.test?'Dein Ergebnis':score?'Runde geschafft!':'Runde beendet')+'</h2><p class="large center">'+score+' von '+s.ids.length+' richtig geschrieben</p>'+lines+next+'</div>';
 }
 function highlight(w){const bits=(w.hl||[]).filter(x=>w.en.includes(x));if(!bits.length)return esc(w.en);let t=w.en,html='';while(t.length){const hit=bits.find(x=>t.startsWith(x));html+=hit?'<mark>'+esc(hit)+'</mark>':esc(t[0]);t=t.slice(hit?hit.length:1)}return html}
 // Vergleich Buchstabe für Buchstabe: Was hat er geschrieben, was fehlt, was ist anders?
@@ -306,7 +306,7 @@ function runView(){
   }else if(s.phase==='retry'){
     inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(s.retryWrong?wrongBox(w,s.retryWrong,paper):'')+(paper?'<p class="helper">Schreib es auf dein Papier.</p><div class="actions">'+act('submit','Mit Lösung vergleichen')+'</div>'
       :'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">Antwort prüfen</button></form>')
-      +(s.retryWrong?'<div class="actions">'+act('showhelp','Lösung nochmal ansehen','textbtn')+act('skip','Zur nächsten Aufgabe '+icon('arrow-right'),'textbtn')+'</div>':'');
+      +(s.retryWrong?'<div class="actions">'+act('showhelp','Lösung nochmal ansehen','textbtn')+'</div>':'');
   }else if(s.phase==='retrycompare'){
     inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche mit deinem Papier. Stimmt jeder Buchstabe?</p><div class="actions">'+act('retryyes','Stimmt')+act('retryno','Noch nicht','ghost')+'</div>';
   }else if(s.phase==='feedback'){
@@ -322,7 +322,7 @@ function runView(){
   }else{
     const number=s.ids.indexOf(w.id)+1;
     const question=st.kind==='test'?'Aufgabe '+number+' von '+s.ids.length:st.kind==='check'?'Kennst du das schon auf Englisch?':'Wie schreibst du das auf Englisch?';
-    inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(s.wrong&&st.kind!=='test'?wrongBox(w,s.wrong,paper):'')+(paper?'<p class="helper">'+(st.kind==='test'?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">'+(st.kind==='test'?'Antwort speichern':'Antwort prüfen')+'</button></form>')+'<div class="actions">'+(paper?act('submit',st.kind==='test'?'Antwort notiert':'Mit Lösung vergleichen'):'')+act('unknown',st.kind==='check'?'Zeig es mir':st.kind==='test'?'Auslassen':'Ich brauche Hilfe','textbtn')+(st.kind==='write'&&s.wrong?act('skip','Zur nächsten Aufgabe '+icon('arrow-right'),'textbtn'):'')+'</div>';
+    inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(s.wrong&&st.kind!=='test'?wrongBox(w,s.wrong,paper):'')+(paper?'<p class="helper">'+(st.kind==='test'?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">'+(st.kind==='test'?'Antwort speichern':'Antwort prüfen')+'</button></form>')+'<div class="actions">'+(paper?act('submit',st.kind==='test'?'Antwort notiert':'Mit Lösung vergleichen'):'')+act('unknown',st.kind==='check'?'Zeig es mir':st.kind==='test'?'Auslassen':'Ich brauche Hilfe','textbtn')+'</div>';
     if(st.kind==='check')inner+=modes();
   }
   const total=s.steps.length+s.finalIds.length;
@@ -331,7 +331,8 @@ function runView(){
   const progress=s.index/total*100;
   const canBack=s.index>0;
   const canLater=['listen','write','test','grade','scene'].includes(st.kind)&&(s.index<s.steps.length-1||s.finalIds.length>0);
-  const stepnav='<div class="stepnav">'+(canBack?act('back',icon('arrow-left')+' Zurück','textbtn quietbtn'):'<span></span>')+'</div>';
+  const canSkip=s.phase!=='feedback'&&['learn','write','test','grade'].includes(st.kind);
+  const stepnav='<div class="stepnav">'+(canBack?act('back',icon('arrow-left')+' Zurück','ghost'):'<span></span>')+(canSkip?act('skip','Zur nächsten Aufgabe '+icon('arrow-right'),'ghost'):'')+'</div>';
   shell(s.label,'<section class="training"><div class="trainer-top"><span class="row">'+(s.world?stamp(s.world):icon('book-open'))+'<span><strong>'+esc(s.label)+'</strong><small class="stepcount">'+esc(position)+'</small></span></span>'+act('pause',icon('pause')+' Pause','ghost')+'</div><div class="track" aria-label="Fortschritt"><i style="width:'+progress+'%"></i></div><article class="panel exercise"><div class="eyebrow">'+icon('bookmark')+' '+lab+(w?' · Seite '+w.page:' · '+esc(s.label))+'</div>'+inner+'</article>'+stepnav+'</section>');
 }
 function submit(){
@@ -383,7 +384,7 @@ document.addEventListener('click',e=>{
     case 'cover':session().phase='retry';session().draft='';save();render();break;
     case 'retryyes':retryResult(true);break;
     case 'retryno':session().draft='';retryResult(false);break;
-    case 'skip':skipTask();break;
+    case 'skip':{const k=current().kind;if(k==='write')skipTask();else if(k==='test'||k==='grade'){if(session().mode!=='paper'&&k==='test'){session().answers??={};session().answers[current().id]=''}k==='test'&&session().mode!=='paper'?assess(false):advance()}else advance();break}
     case 'showhelp':session().phase='help';session().draft='';save();render();break;
     case 'yes':assess(true);break;
     case 'no':assess(false);break;

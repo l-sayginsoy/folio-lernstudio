@@ -141,3 +141,4 @@ button[data-playing]{background:var(--soft);border-color:var(--accent);color:var
 .tipbox{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 14px;border-radius:12px;background:#fff7e0;border:1px solid #f3dc9a}
 .tipbox .icon{color:#c58a00;width:20px;height:20px;margin-top:2px;flex:none}
 .cmp+p,.tipbox+p,.cmp+.tipbox+p{margin-top:16px}
+.stepnav .ghost{white-space:nowrap;font-size:15px;padding:10px 14px}
