@@ -249,13 +249,42 @@ function summary(){
   return '<div class="panel exercise stack"><div class="success" role="img" aria-label="Geschafft">'+icon('check')+'</div><h2 class="center">'+(s.test?'Dein Ergebnis':'Runde geschafft!')+'</h2><p class="large center">'+score+' von '+s.ids.length+' richtig geschrieben</p>'+lines+next+'</div>';
 }
 function highlight(w){const bits=(w.hl||[]).filter(x=>w.en.includes(x));if(!bits.length)return esc(w.en);let t=w.en,html='';while(t.length){const hit=bits.find(x=>t.startsWith(x));html+=hit?'<mark>'+esc(hit)+'</mark>':esc(t[0]);t=t.slice(hit?hit.length:1)}return html}
+// Vergleich Buchstabe für Buchstabe: Was hat er geschrieben, was fehlt, was ist anders?
+const plain=t=>String(t).toLowerCase().replace(/[’‘]/g,"'").replace(/[.!?,:;]/g,'').replace(/\s+/g,' ').trim();
+function alignLetters(a,b){
+  const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>{const r=new Array(n+1).fill(0);r[0]=i;return r});
+  for(let j=0;j<=n;j++)d[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  const ops=[];let i=m,j=n;
+  while(i>0||j>0){
+    if(j>0&&d[i][j]===d[i][j-1]+1){ops.push({a:null,b:b[j-1]});j--}
+    else if(i>0&&j>0&&d[i][j]===d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)){ops.push({a:a[i-1],b:b[j-1],ok:a[i-1]===b[j-1]});i--;j--}
+    else{ops.push({a:a[i-1],b:null});i--}
+  }
+  return {ops:ops.reverse(),dist:d[m][n]};
+}
 function spellingHelp(w,attempt){
-  const target=w.ans[0],given=normalize(attempt),goal=normalize(target);
-  let n=0;
-  while(n<Math.min(given.length,goal.length)&&given[n]===goal[n])n++;
-  const mismatch=n>0&&given.length===goal.length-1&&given.slice(n)===goal.slice(n+1);
-  const hint=mismatch?'Nach „'+goal.slice(0,n)+'“ fehlt „'+goal[n]+'“.':w.tip||'Lies die Buchform langsam und vergleiche Wort für Wort.';
-  return '<div class="helper"><b>Dein Versuch</b> · '+esc(attempt)+'<br>'+esc(hint)+'</div>';
+  const given=plain(attempt);
+  let best=null;for(const t of w.ans)for(const goal of new Set([plain(t),normalize(t)])){const r=alignLetters(given,goal);if(!best||r.dist<best.dist)best=r}
+  const ops=best.ops,tile=(c,cls)=>c===' '?'<span class="lt sp"></span>':'<span class="lt'+(cls?' '+cls:'')+'">'+esc(c)+'</span>';
+  const mine=ops.filter(o=>o.a!==null).map(o=>tile(o.a,o.ok?'':'bad')).join('');
+  const right=ops.filter(o=>o.b!==null).map(o=>tile(o.b,o.ok?'':'miss')).join('');
+  const missing=ops.filter(o=>o.a===null).map(o=>o.b).filter(c=>/[a-z]/i.test(c));
+  const apostrophe=ops.some(o=>o.a===null&&o.b==="'");
+  const wrong=ops.filter(o=>o.a!==null&&!o.ok).length;
+  const startOk=ops.length&&ops[0].ok;
+  const extra=ops.filter(o=>o.b===null).length;
+  let msg;
+  if(!wrong&&!missing.length&&apostrophe)msg='Fast! Es fehlt nur der Apostroph (\').';
+  else if(best.dist===1&&missing.length===1)msg='Fast! Es fehlt nur ein Buchstabe: '+missing[0];
+  else if(best.dist===1&&extra===1)msg='Fast! Ein Buchstabe ist zu viel.';
+  else if(best.dist===1)msg='Fast! Nur ein Buchstabe ist anders.';
+  else if(!wrong&&missing.length)msg=(startOk?'Guter Anfang! ':'')+(missing.length===1?'Es fehlt noch 1 Buchstabe: ':'Es fehlen noch '+missing.length+' Buchstaben: ')+missing.join(' ')+(apostrophe?' und ein Apostroph (\')':'');
+  else if(best.dist<=2)msg='Fast! Nur zwei Buchstaben sind anders.';
+  else msg='Schau dir die grünen Buchstaben an. Die fehlen noch oder sind anders.';
+  return '<div class="cmp"><p class="cmp-msg">'+icon('lightbulb')+'<span>'+esc(msg)+'</span></p>'
+    +'<p class="cmp-label">Du hast geschrieben</p><div class="cmp-row">'+(mine||'<span class="caption">nichts</span>')+'</div>'
+    +'<p class="cmp-label">Richtig ist</p><div class="cmp-row">'+right+'</div></div>';
 }
 function runView(){
   const s=session();if(!s){navigate('studio');return}
@@ -272,7 +301,7 @@ function runView(){
     inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche '+(st.kind==='grade'?'Antwort '+st.number:'deine Antwort')+' auf dem Papier. Stimmen die Wörter und die Schreibweise?</p>'+(w.ans.length>1?'<details><summary>Weitere passende Formen</summary>'+w.ans.slice(1).map(esc).join(' · ')+'</details>':'')+'<div class="actions">'+act('yes','Stimmt überein')+act('no','Noch üben','ghost')+'</div>';
   }else if(s.phase==='help'){
     inner='<h2>'+esc(w.prompt)+'</h2><p>So schreibt man es:</p><p class="solution" lang="en">'+highlight(w)+'</p>'+audioButtons(w)
-      +(s.attempt?spellingHelp(w,s.attempt):(w.tip?'<div class="helper">'+esc(w.tip)+'</div>':''))
+      +(s.attempt?spellingHelp(w,s.attempt):'')+(w.tip?'<div class="tipbox">'+icon('sparkles')+'<span><b>Merkhilfe:</b> '+esc(w.tip)+'</span></div>':'')
       +'<p><b>Merk dir das Wort.</b> Dann deckst du es ab und schreibst es selbst.</p><div class="actions">'+act('cover','Ich hab’s mir gemerkt '+icon('arrow-right'))+'</div>';
   }else if(s.phase==='retry'){
     inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(s.retryWrong?wrongBox(w,s.retryWrong,paper):'')+(paper?'<p class="helper">Schreib es auf dein Papier.</p><div class="actions">'+act('submit','Mit Lösung vergleichen')+'</div>'

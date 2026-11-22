@@ -128,3 +128,16 @@ button[data-playing]{background:var(--soft);border-color:var(--accent);color:var
 .wrongbox .icon{width:26px;height:26px;stroke-width:3;flex:none;color:#d12c22}
 .wrongbox .hint{color:#7a2b26;font-weight:600}
 .entry.wrong{border:2px solid #e04a3f;background:#fff6f5}
+/* Buchstaben-Vergleich nach einem Fehler */
+.cmp{margin-top:18px;padding:16px;border-radius:14px;background:#f6f7fc;border:1px solid var(--line)}
+.cmp-msg{display:flex;gap:10px;align-items:flex-start;font-weight:700;font-size:17px;margin-bottom:10px}
+.cmp-msg .icon{color:#d99a00;width:22px;height:22px;margin-top:2px}
+.cmp-label{font-size:13px;color:var(--muted);margin:10px 0 6px}
+.cmp-row{display:flex;flex-wrap:wrap;gap:5px}
+.lt{min-width:30px;height:40px;padding:0 6px;display:inline-grid;place-items:center;border-radius:8px;background:#fff;border:1px solid var(--line);font-weight:750;font-size:21px}
+.lt.sp{min-width:14px;background:transparent;border:0}
+.lt.bad{background:#fde6e4;border-color:#f0a8a8;color:#b42318;text-decoration:line-through}
+.lt.miss{background:#dcf6e7;border:2px solid #4fbf82;color:#12703f}
+.tipbox{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 14px;border-radius:12px;background:#fff7e0;border:1px solid #f3dc9a}
+.tipbox .icon{color:#c58a00;width:20px;height:20px;margin-top:2px;flex:none}
+.cmp+p,.tipbox+p,.cmp+.tipbox+p{margin-top:16px}
