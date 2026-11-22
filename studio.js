@@ -98,6 +98,7 @@ function home(){
     <section class="hero">${art}<div class="hero-content"><div class="eyebrow">${icon('headphones')}${s?'Deine offene Runde':'Kapitel '+targetNo+' von '+SCENES.length}</div>
     <h2>${s?esc(s.label):esc(target.name)}</h2><p>${s?'Mach an der Stelle weiter, an der du aufgehört hast.':totalOpen?'Noch '+openIn(target)+' von '+target.ids.length+' Wortkarten offen. Eine Runde hat drei Wortkarten.':'Alle Kapitel geschafft! Wiederhol, was du magst.'}</p>
     ${act(s?'resume':'world',(s?'Runde fortsetzen':'Runde starten')+icon('arrow-right'),'btn',target.id)}</div></section>
+    <ol class="howto"><li><b>Ansehen und anhören:</b> Du siehst das Wort und tippst auf „Anhören“.</li><li><b>Selbst schreiben:</b> Du schreibst das Wort auf Englisch.</li><li><b>Grüner Haken:</b> Richtig! Wenn nicht, zeigt dir die App die Lösung und du schreibst sie ab.</li></ol>
     <div class="section-head"><h2>Deine Kapitel</h2><span class="caption">${totalOpen?'Noch '+totalOpen+' Wortkarten offen':'Alles geschafft'}</span></div>
     <div class="worlds">${worlds}</div>
     <div class="studiofoot"><div class="row"><span class="collection-icon">${icon('library-big')}</span><div><b>Dein Wortschatz</b><p>${done} von ${WORDS.length} Karten kennengelernt</p></div></div>

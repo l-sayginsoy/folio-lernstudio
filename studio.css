@@ -122,3 +122,4 @@ button[data-playing]{background:var(--soft);border-color:var(--accent);color:var
 .quietbtn{font-weight:600;color:var(--muted);font-size:15px}
 @media (prefers-reduced-motion:no-preference){.success{animation:pop .35s ease-out}@keyframes pop{from{transform:scale(.7)}to{transform:scale(1)}}}
 .actions.center{display:flex;flex-wrap:wrap;width:100%}
+.howto{margin:16px 0 0;padding:14px 18px 14px 38px;background:#fff;border:1px solid var(--line);border-radius:14px;display:grid;gap:6px;font-size:15px}
