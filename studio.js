@@ -29,12 +29,16 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storageOK=tr
 const item=id=>state.cards[id]??(state.cards[id]={});
 function day(t){return new Date(t).toLocaleDateString('sv-SE')}
 function secure(c){return c?.write==='ok' && (c.validated||[]).length>=2}
-function status(id){const c=state.cards[id];if(secure(c))return 'Wiederholt gekonnt';if(c?.write==='ok')return 'Selbst geschrieben';if(c?.write==='retry')return 'Weiter üben';return c?.introduced?'Kennengelernt':'Offen'}
+function status(id){const c=state.cards[id];if(secure(c))return 'Wiederholt gekonnt';if(c?.write==='retry')return 'Weiter üben';if(c?.write==='ok'||c?.done)return 'Selbst geschrieben';return c?.introduced?'Kennengelernt':'Offen'}
 function normalize(s){return s.normalize('NFKC').toLowerCase().replace(/[’‘]/g,"'").replace(/…|\.{2,}/g,' ').replace(/\b(i|we|they|you)'ve\b/g,'$1 have').replace(/\b(he|she)\x27s (?=found|started|met)/g,'$1 has ').replace(/\b(who|this|that)'s\b/g,'$1 is').replace(/you're/g,'you are').replace(/don't/g,'do not').replace(/hasn't/g,'has not').replace(/haven't/g,'have not').replace(/mustn't/g,'must not').replace(/needn't/g,'need not').replace(/[.!?,:;]/g,'').replace(/\s+/g,' ').trim()}
 function correct(w,v){const n=normalize(v);return w.ans.some(a=>normalize(a)===n)}
 function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function rank(id){const c=state.cards[id];if(!c?.introduced)return 1;if(c.write==='retry')return !c.last||Date.now()-c.last>10*60000?0:4;if(!c.last||Date.now()-c.last>16*3600000)return 2;return 3}
 function select(ids,n){return [...ids].sort((a,b)=>rank(a)-rank(b)||(state.cards[a]?.last||0)-(state.cards[b]?.last||0)).slice(0,n)}
+// Kapitel-Fortschritt: Eine Wortkarte ist geschafft, wenn er sie in einer Runde selbst richtig geschrieben hat.
+const doneIn=w=>w.ids.filter(id=>state.cards[id]?.done).length;
+const openIn=w=>w.ids.length-doneIn(w);
+const bar=(d,n)=>'<span class="minitrack" aria-hidden="true"><i style="width:'+Math.round(d/n*100)+'%"></i></span>';
 let page='studio', filter='all', query='', playing=null, noticeTimer;
 const session=()=>state.session;
 function notify(msg){const el=document.querySelector('#notice');el.textContent=msg;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el.textContent='',3500)}
@@ -79,18 +83,22 @@ function shell(title,html){
 function intro(h,p=''){return '<header class="intro"><h1>'+h+'</h1>'+(p?'<p>'+p+'</p>':'')+'</header>'}
 function stamp(id){const [ic,bg,fg]=worldStyle[id];return '<span class="stamp" style="--shade:'+bg+';--tone:'+fg+'">'+icon(ic)+'</span>'}
 function home(){
-  const s=session(), done=Object.values(state.cards).filter(c=>c.introduced).length;
-  const worlds=SCENES.map(w=>`<button class="tile" data-action="world" data-id="${w.id}">
-    <span class="tile-top">${stamp(w.id)}<span class="tile-arrow">${icon('arrow-up-right')}</span></span>
-    <strong>${esc(w.name)}</strong><span class="caption">${w.ids.length} Wortkarten</span>
-  </button>`).join('');
-  const london=!s||s.world==='london';
-  const art=london?'<img class="hero-art" src="assets/london-studio.jpg" alt="">':`<div class="resume-art" aria-hidden="true">${icon(s.world?worldStyle[s.world][0]:'book-open')}</div>`;
+  const s=session()?.phase==='done'?null:session(), done=Object.values(state.cards).filter(c=>c.introduced).length;
+  const worlds=SCENES.map((w,i)=>{const d=doneIn(w),n=w.ids.length,full=d===n;return `<button class="tile${full?' tile-done':''}" data-action="world" data-id="${w.id}">
+    <span class="tile-top">${stamp(w.id)}<span class="tile-arrow">${icon(full?'check':'arrow-up-right')}</span></span>
+    <span class="caption">Kapitel ${i+1}</span><strong>${esc(w.name)}</strong>
+    <span class="caption">${full?'Kapitel geschafft!':d+' von '+n+' geschafft · noch '+(n-d)+' offen'}</span>${bar(d,n)}
+  </button>`}).join('');
+  const target=SCENES.find(w=>openIn(w)>0)||SCENES[0], targetNo=SCENES.indexOf(target)+1;
+  const totalOpen=SCENES.reduce((n,w)=>n+openIn(w),0);
+  const london=s?s.world==='london':target.id==='london';
+  const artWorld=s?s.world:target.id;
+  const art=london?'<img class="hero-art" src="assets/london-studio.jpg" alt="">':`<div class="resume-art" aria-hidden="true">${icon(artWorld?worldStyle[artWorld][0]:'book-open')}</div>`;
   shell('Lernstudio',`<header class="intro home-intro"><div><h1>Dein Lernstudio</h1><p>Englisch aus deinem Schulbuch · Seiten 154–156</p></div><span class="test-date">${icon('calendar-days')} Test am 23. November</span></header>
-    <section class="hero">${art}<div class="hero-content"><div class="eyebrow">${icon('headphones')}${s?'Deine offene Runde':'Hören · Sprechen · Schreiben'}</div>
-    <h2>${s?esc(s.label):'London Calling'}</h2><p>${s?'Mach an der Stelle weiter, an der du aufgehört hast.':'Entdecke London in einer Runde mit drei Wortkarten.'}</p>
-    ${act(s?'resume':'world',(s?'Runde fortsetzen':'Runde starten')+icon('arrow-right'),'btn','london')}</div></section>
-    <div class="section-head"><h2>Deine Lernwelten</h2><span class="caption">4 Themen</span></div>
+    <section class="hero">${art}<div class="hero-content"><div class="eyebrow">${icon('headphones')}${s?'Deine offene Runde':'Kapitel '+targetNo+' von '+SCENES.length}</div>
+    <h2>${s?esc(s.label):esc(target.name)}</h2><p>${s?'Mach an der Stelle weiter, an der du aufgehört hast.':totalOpen?'Noch '+openIn(target)+' von '+target.ids.length+' Wortkarten offen. Eine Runde hat drei Wortkarten.':'Alle Kapitel geschafft! Wiederhol, was du magst.'}</p>
+    ${act(s?'resume':'world',(s?'Runde fortsetzen':'Runde starten')+icon('arrow-right'),'btn',target.id)}</div></section>
+    <div class="section-head"><h2>Deine Kapitel</h2><span class="caption">${totalOpen?'Noch '+totalOpen+' Wortkarten offen':'Alles geschafft'}</span></div>
     <div class="worlds">${worlds}</div>
     <div class="studiofoot"><div class="row"><span class="collection-icon">${icon('library-big')}</span><div><b>Dein Wortschatz</b><p>${done} von ${WORDS.length} Karten kennengelernt</p></div></div>
     ${act('nav','Alle Karten '+icon('arrow-right'),'textbtn','library')}</div>`);
@@ -126,6 +134,7 @@ function proposed(action,id){
 let pending=null;
 function begin(options){
   if(!options.ids.length)return;
+  if(state.session?.phase==='done')state.session=null;
   if(state.session){pending=options;navigate('replace');return}
   install(options);
 }
@@ -168,17 +177,51 @@ function assess(ok){
   }
   const fresh=step.kind==='check';
   record(w,ok,fresh);
-  s.results[w.id]=ok?(fresh?'known':'practised'):'again';
-  if(fresh&&!ok){
+  if(ok){
+    item(w.id).done=true;
+    s.results[w.id]=fresh?'known':step.again?'later':'practised';
+    s.result=true;s.phase='feedback';save();render();return;
+  }
+  s.results[w.id]='again';
+  if(fresh){
     const distractors=shuffle(WORDS.filter(x=>x.id!==w.id && x.de!==w.de)).slice(0,2);
     s.steps.splice(s.index+1,0,{kind:'learn',id:w.id},{kind:'listen',id:w.id,choices:shuffle([w,...distractors].map(x=>x.id))});s.finalIds.push(w.id);
+    s.result=false;s.phase='feedback';save();render();return;
   }
-  s.result=ok;s.phase='feedback';save();render();
+  // Nicht gewusst oder falsch geschrieben: Lösung zeigen, selbst einmal richtig schreiben,
+  // am Ende der Runde noch einmal ohne Hilfe. Die Aufgabe wird nicht übersprungen.
+  s.attempt=s.draft;s.draft='';s.phase='help';save();render();
+}
+function finishHelp(){
+  const s=session(),st=current();
+  if(!st.again)s.steps.push({kind:'write',id:st.id,again:true});
+  notify(st.again?'Gut abgeschrieben. Morgen kommt das Wort wieder.':'Gut. Am Ende der Runde kommt das Wort noch einmal ohne Hilfe.');
+  s.attempt='';advance();
+}
+function goBack(){
+  const s=session();if(!s||s.index===0)return;
+  s.index--;s.phase='ask';s.draft='';s.chosen=null;s.result=null;s.attempt='';stopAudio();save();render();
+}
+function postpone(){
+  const s=session();
+  if(s.index>=s.steps.length-1&&s.finalIds.length){s.steps.push(...shuffle(s.finalIds).map(id=>({id,kind:'write'})));s.finalIds=[]}
+  if(s.index>=s.steps.length-1){notify('Das ist die letzte offene Aufgabe dieser Runde.');return}
+  const [st]=s.steps.splice(s.index,1);s.steps.push(st);
+  s.phase='ask';s.draft='';s.chosen=null;s.result=null;s.attempt='';stopAudio();
+  notify('Kommt am Ende der Runde noch einmal.');save();render();
 }
 function summary(){
   const s=session(),score=Object.values(s.results).filter(r=>r==='known').length;
-  const labels={known:'Ohne Vorlage gekonnt',practised:'Nach dem Üben geschrieben',again:'Weiter üben'};
-  return '<div class="panel exercise stack"><div class="eyebrow">'+icon('flag')+' '+esc(s.label)+'</div><h2>'+(s.test?'Dein Ergebnis':'Runde abgeschlossen')+'</h2><p>'+(s.test?score+' von '+s.ids.length+' Aufgaben richtig.':'Du hast '+countLabel(s.ids.length)+' bearbeitet.')+'</p>'+s.ids.map(id=>'<div class="resultline"><span><b>'+esc(terms.get(id).en)+'</b>'+(s.test&&s.answers?.[id]!==undefined?'<br><small>Deine Antwort: '+esc(s.answers[id]||'ausgelassen')+'</small>':'')+'</span><span>'+labels[s.results[id]]+'</span></div>').join('')+'<div>'+act('finish','Zurück ins Lernstudio '+icon('arrow-right'))+'</div></div>';
+  const labels={known:'Ohne Vorlage gekonnt',practised:'Selbst geschrieben',later:'Nach Hilfe selbst geschafft',again:'Weiter üben'};
+  let chapter='';
+  if(s.world){
+    const i=SCENES.findIndex(x=>x.id===s.world),w=SCENES[i],open=openIn(w),next=SCENES[i+1];
+    const others=SCENES.filter(x=>x.id!==w.id&&openIn(x)>0);
+    chapter='<div class="chapterbox stack"><h3>'+(open?'Kapitel '+(i+1)+' · '+esc(w.name)+': noch '+open+' von '+w.ids.length+' Wortkarten offen':'Kapitel '+(i+1)+' · '+esc(w.name)+' ist geschafft!')+'</h3>'+bar(doneIn(w),w.ids.length)
+      +'<div class="actions">'+(open?act('world','Nächste Runde in diesem Kapitel','btn',w.id):'')+(next?act('world','Weiter zu Kapitel '+(i+2)+': '+esc(next.name)+' '+icon('arrow-right'),open?'ghost':'btn',next.id):'')+'</div>'
+      +(others.length?'<p class="caption">Noch offen in anderen Kapiteln:</p><div class="pills">'+others.map(x=>act('world',esc(x.name)+' · noch '+openIn(x),'pill',x.id)).join('')+'</div>':(open?'':'<p>Alle Kapitel sind geschafft. Stark!</p>'))+'</div>';
+  }
+  return '<div class="panel exercise stack"><div class="eyebrow">'+icon('flag')+' '+esc(s.label)+'</div><h2>'+(s.test?'Dein Ergebnis':'Runde abgeschlossen')+'</h2><p>'+(s.test?score+' von '+s.ids.length+' Aufgaben richtig.':'Du hast '+countLabel(s.ids.length)+' bearbeitet.')+'</p>'+s.ids.map(id=>'<div class="resultline"><span><b>'+esc(terms.get(id).en)+'</b>'+(s.test&&s.answers?.[id]!==undefined?'<br><small>Deine Antwort: '+esc(s.answers[id]||'ausgelassen')+'</small>':'')+'</span><span>'+(labels[s.results[id]]||'Weiter üben')+'</span></div>').join('')+chapter+'<div>'+act('finish','Zurück ins Lernstudio '+icon('arrow-right'),s.world?'textbtn':'btn')+'</div></div>';
 }
 function highlight(w){const bits=(w.hl||[]).filter(x=>w.en.includes(x));if(!bits.length)return esc(w.en);let t=w.en,html='';while(t.length){const hit=bits.find(x=>t.startsWith(x));html+=hit?'<mark>'+esc(hit)+'</mark>':esc(t[0]);t=t.slice(hit?hit.length:1)}return html}
 function spellingHelp(w,attempt){
@@ -201,6 +244,11 @@ function runView(){
     else inner+='<div class="choices">'+st.options.map(opt=>act('scene',esc(opt),'answer',opt)).join('')+'</div>';
   }else if(st.kind==='grade'||s.phase==='compare'){
     inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche '+(st.kind==='grade'?'Antwort '+st.number:'deine Antwort')+' auf dem Papier. Stimmen die Wörter und die Schreibweise?</p>'+(w.ans.length>1?'<details><summary>Weitere passende Formen</summary>'+w.ans.slice(1).map(esc).join(' · ')+'</details>':'')+'<div class="actions">'+act('yes','Stimmt überein')+act('no','Noch üben','ghost')+'</div>';
+  }else if(s.phase==='help'){
+    inner='<h2>'+esc(w.prompt)+'</h2><p>So schreibt man es:</p><p class="solution" lang="en">'+highlight(w)+'</p>'+audioButtons(w)
+      +(s.attempt?spellingHelp(w,s.attempt):(w.tip?'<div class="helper">'+esc(w.tip)+'</div>':''))
+      +(paper?'<p class="helper warn"><b>Jetzt du:</b> Schreib es einmal richtig auf dein Papier. '+(st.again?'':'Am Ende der Runde kommt es noch einmal ohne Hilfe.')+'</p><div class="actions">'+act('copied','Abgeschrieben '+icon('check'))+'</div>'
+      :'<p><b>Jetzt du:</b> Tipp es einmal richtig ab. '+(st.again?'':'Am Ende der Runde kommt es noch einmal ohne Hilfe.')+'</p><form id="copying"><label class="sr" for="copy">Abschreiben</label><input class="entry" id="copy" lang="en" placeholder="Hier abschreiben" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">Prüfen</button></form>');
   }else if(s.phase==='feedback'){
     const yes=s.result;
     inner='<h2>'+(yes?(st.kind==='check'?'Das kannst du schon.':'Das sitzt für diese Runde.'):(st.kind==='check'?'Lernen wir es zusammen.':'Schau noch einmal hin.'))+'</h2><p class="large"><b lang="en">'+highlight(w)+'</b> · '+esc(w.de)+'</p>'+(!yes&&s.draft?spellingHelp(w,s.draft):'')+'<div class="actions">'+act('next','Weiter '+icon('arrow-right'))+'</div>';
@@ -216,10 +264,14 @@ function runView(){
     inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(paper?'<p class="helper">'+(st.kind==='test'?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">'+(st.kind==='test'?'Antwort speichern':'Antwort prüfen')+'</button></form>')+'<div class="actions">'+(paper?act('submit',st.kind==='test'?'Antwort notiert':'Mit Lösung vergleichen'):'')+act('unknown',st.kind==='check'?'Zeig es mir':st.kind==='test'?'Auslassen':'Ich brauche Hilfe','textbtn')+'</div>';
     if(st.kind==='check'||st.kind==='write')inner+=modes();
   }
-  const cardNumber=w?s.ids.indexOf(w.id)+1:null;
-  const position=st.kind==='scene'?'Szene':cardNumber?'Karte '+cardNumber+' / '+s.ids.length:'';
-  const progress=s.test?s.index/s.steps.length*100:s.index/(s.steps.length+s.finalIds.length)*100;
-  shell(s.label,'<section class="training"><div class="trainer-top"><span class="row">'+(s.world?stamp(s.world):icon('book-open'))+'<span><strong>'+esc(s.label)+'</strong><small class="stepcount">'+esc(position)+'</small></span></span>'+act('pause',icon('pause')+' Pause','ghost')+'</div><div class="track" aria-label="Fortschritt"><i style="width:'+progress+'%"></i></div><article class="panel exercise"><div class="eyebrow">'+icon('bookmark')+' '+lab+(w?' · Seite '+w.page:' · '+esc(s.label))+'</div>'+inner+'</article></section>');
+  const total=s.steps.length+s.finalIds.length;
+  const world=s.world?SCENES.find(x=>x.id===s.world):null;
+  const position='Aufgabe '+(s.index+1)+' von '+total+(world?' · Kapitel '+(SCENES.indexOf(world)+1)+': noch '+openIn(world)+' von '+world.ids.length+' offen':'');
+  const progress=s.index/total*100;
+  const canBack=s.index>0;
+  const canLater=['listen','write','test','grade','scene'].includes(st.kind)&&(s.index<s.steps.length-1||s.finalIds.length>0);
+  const stepnav='<div class="stepnav">'+(canBack?act('back',icon('arrow-left')+' Zurück','ghost'):'<span></span>')+(canLater?act('later','Später machen '+icon('arrow-right'),'ghost'):'')+'</div>';
+  shell(s.label,'<section class="training"><div class="trainer-top"><span class="row">'+(s.world?stamp(s.world):icon('book-open'))+'<span><strong>'+esc(s.label)+'</strong><small class="stepcount">'+esc(position)+'</small></span></span>'+act('pause',icon('pause')+' Pause','ghost')+'</div><div class="track" aria-label="Fortschritt"><i style="width:'+progress+'%"></i></div><article class="panel exercise"><div class="eyebrow">'+icon('bookmark')+' '+lab+(w?' · Seite '+w.page:' · '+esc(s.label))+'</div>'+inner+'</article>'+stepnav+'</section>');
 }
 function submit(){
   const s=session(),st=current();
@@ -231,7 +283,13 @@ function submit(){
   if(s.test){s.answers??={};s.answers[st.id]=s.draft}
   assess(correct(terms.get(st.id),s.draft));
 }
-document.addEventListener('submit',e=>{if(e.target.id==='writing'){e.preventDefault();submit()}});
+document.addEventListener('submit',e=>{
+  if(e.target.id==='writing'){e.preventDefault();submit()}
+  if(e.target.id==='copying'){e.preventDefault();
+    const v=document.querySelector('#copy').value,w=terms.get(current().id);
+    if(correct(w,v))finishHelp();else notify('Noch nicht ganz. Vergleiche Buchstabe für Buchstabe mit der Lösung oben.');
+  }
+});
 document.addEventListener('input',e=>{
   if(e.target.id==='draft'){session().draft=e.target.value;save()}
   if(e.target.id==='notes'){state.notes=e.target.value;save()}
@@ -253,6 +311,9 @@ document.addEventListener('click',e=>{
     case 'mode':state.mode=id;if(page==='run')session().mode=id;save();render();break;
     case 'submit':submit();break;
     case 'next':case 'skiplisten':advance();break;
+    case 'back':goBack();break;
+    case 'later':postpone();break;
+    case 'copied':finishHelp();break;
     case 'yes':assess(true);break;
     case 'no':assess(false);break;
     case 'unknown':if(session().test&&session().mode==='paper'){advance();break}if(session().test){session().answers??={};session().answers[current().id]=''}assess(false);break;
