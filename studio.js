@@ -192,9 +192,49 @@ function assess(ok){
   s.phase='ask';save();render();
 }
 // Rote Meldung bei falscher Antwort; ab dem 2. Versuch ein kleiner Tipp
-function wrongBox(w,n,paper){
-  return '<div class="wrongbox" role="alert">'+icon('x')+'<div><b>Noch nicht richtig.</b> '+(paper?'Probier es nochmal auf deinem Papier.':'Probier es nochmal.')
-    +(n>=2?'<br><span class="hint">Tipp: Es fängt mit „'+esc(w.en.slice(0,1))+'“ an.</span>':'')+'</div></div>';
+// Rote Meldung bei falscher Antwort: zeigt genau, WO der Fehler ist, ohne die Lösung zu verraten
+function bestAlign(w,attempt){
+  const given=plain(attempt);let best=null;
+  for(const t of w.ans)for(const goal of new Set([plain(t),normalize(t)])){const r=alignLetters(given,goal);if(!best||r.dist<best.dist)best={...r,goal}}
+  return best;
+}
+function wrongBox(w,n,paper,attempt){
+  let detail='';
+  if(paper){
+    if(n>=2){const count=w.en.replace(/[^a-z]/gi,'').length;detail='<span class="hint">Tipp: Das Wort hat '+count+' Buchstaben.</span>'}
+  }else if(attempt&&attempt.trim()){
+    // Vertauschte Nachbarbuchstaben (z. B. chruch, bougth) eigens erkennen
+    const g=plain(attempt);let swap=-1;
+    for(const t of w.ans)for(const goal of new Set([plain(t),normalize(t)])){
+      if(goal.length!==g.length||goal===g)continue;
+      const diff=[...g].map((c,k)=>c!==goal[k]?k:-1).filter(k=>k>=0);
+      if(diff.length===2&&diff[1]===diff[0]+1&&g[diff[0]]===goal[diff[1]]&&g[diff[1]]===goal[diff[0]])swap=diff[0];
+    }
+    if(swap>=0){
+      const tiles=[...g].map((c,k)=>c===' '?'<span class="lt sp"></span>':'<span class="lt'+(k===swap||k===swap+1?' bad-sub':'')+'">'+esc(c)+'</span>').join('');
+      return '<div class="wrongbox" role="alert">'+icon('x')+'<div><b>Noch nicht richtig.</b> Probier es nochmal.<br><span class="hint">Zwei Buchstaben sind vertauscht.</span><span class="cmp-row mine">'+tiles+'</span></div></div>';
+    }
+    const {ops,goal}=bestAlign(w,attempt);
+    const subs=[],extras=[];let missing=0,apos=0,pos=0;
+    const tiles=ops.map(o=>{
+      if(o.a!==null&&o.a!==' ')pos++;
+      if(o.a!==null&&o.b!==null){if(o.ok)return o.a===' '?'<span class="lt sp"></span>':'<span class="lt">'+esc(o.a)+'</span>';subs.push(pos);return '<span class="lt bad-sub">'+esc(o.a)+'</span>'}
+      if(o.a!==null){if(o.a===' ')return '<span class="lt sp"></span>';extras.push(pos);return '<span class="lt bad">'+esc(o.a)+'</span>'}
+      if(o.b===' ')return '<span class="lt sp"></span>';
+      if(o.b==="'")apos++;else missing++;
+      return '<span class="lt gap" aria-label="hier fehlt etwas">?</span>';
+    }).join('');
+    const total=subs.length+extras.length+missing+apos;
+    let msg;
+    if(total>Math.max(3,goal.replace(/ /g,'').length*0.6))msg='Das ist noch ein anderes Wort.';
+    else if(total===1&&subs.length)msg='Der '+subs[0]+'. Buchstabe stimmt nicht.';
+    else if(total===1&&extras.length)msg='Ein Buchstabe ist zu viel.';
+    else if(total===1&&missing)msg='Da fehlt ein Buchstabe.';
+    else if(total===1&&apos)msg='Da fehlt ein Apostroph (\').';
+    else msg=total+' Stellen stimmen noch nicht.';
+    detail='<span class="hint">'+esc(msg)+'</span><span class="cmp-row mine">'+tiles+'</span>';
+  }
+  return '<div class="wrongbox" role="alert">'+icon('x')+'<div><b>Noch nicht richtig.</b> '+(paper?'Probier es nochmal auf deinem Papier.':'Probier es nochmal.')+(detail?'<br>'+detail:'')+'</div></div>';
 }
 function needHelp(){
   const s=session(),st=current(),w=terms.get(st.id);
@@ -304,7 +344,7 @@ function runView(){
       +(s.attempt?spellingHelp(w,s.attempt):'')+(w.tip?'<div class="tipbox">'+icon('sparkles')+'<span><b>Merkhilfe:</b> '+esc(w.tip)+'</span></div>':'')
       +'<p><b>Merk dir das Wort.</b> Dann deckst du es ab und schreibst es selbst.</p><div class="actions">'+act('cover','Ich hab’s mir gemerkt '+icon('arrow-right'))+'</div>';
   }else if(s.phase==='retry'){
-    inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(s.retryWrong?wrongBox(w,s.retryWrong,paper):'')+(paper?'<p class="helper">Schreib es auf dein Papier.</p><div class="actions">'+act('submit','Mit Lösung vergleichen')+'</div>'
+    inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(s.retryWrong?wrongBox(w,s.retryWrong,paper,s.draft):'')+(paper?'<p class="helper">Schreib es auf dein Papier.</p><div class="actions">'+act('submit','Mit Lösung vergleichen')+'</div>'
       :'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">Antwort prüfen</button></form>')
       +(s.retryWrong?'<div class="actions">'+act('showhelp','Lösung nochmal ansehen','textbtn')+'</div>':'');
   }else if(s.phase==='retrycompare'){
@@ -322,7 +362,7 @@ function runView(){
   }else{
     const number=s.ids.indexOf(w.id)+1;
     const question=st.kind==='test'?'Aufgabe '+number+' von '+s.ids.length:st.kind==='check'?'Kennst du das schon auf Englisch?':'Wie schreibst du das auf Englisch?';
-    inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(s.wrong&&st.kind!=='test'?wrongBox(w,s.wrong,paper):'')+(paper?'<p class="helper">'+(st.kind==='test'?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">'+(st.kind==='test'?'Antwort speichern':'Antwort prüfen')+'</button></form>')+'<div class="actions">'+(paper?act('submit',st.kind==='test'?'Antwort notiert':'Mit Lösung vergleichen'):'')+act('unknown',st.kind==='check'?'Zeig es mir':st.kind==='test'?'Auslassen':'Ich brauche Hilfe','textbtn')+'</div>';
+    inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(s.wrong&&st.kind!=='test'?wrongBox(w,s.wrong,paper,s.lastWrong):'')+(paper?'<p class="helper">'+(st.kind==='test'?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">'+(st.kind==='test'?'Antwort speichern':'Antwort prüfen')+'</button></form>')+'<div class="actions">'+(paper?act('submit',st.kind==='test'?'Antwort notiert':'Mit Lösung vergleichen'):'')+act('unknown',st.kind==='check'?'Zeig es mir':st.kind==='test'?'Auslassen':'Ich brauche Hilfe','textbtn')+'</div>';
     if(st.kind==='check')inner+=modes();
   }
   const total=s.steps.length+s.finalIds.length;

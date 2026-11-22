@@ -142,3 +142,8 @@ button[data-playing]{background:var(--soft);border-color:var(--accent);color:var
 .tipbox .icon{color:#c58a00;width:20px;height:20px;margin-top:2px;flex:none}
 .cmp+p,.tipbox+p,.cmp+.tipbox+p{margin-top:16px}
 .stepnav .ghost{white-space:nowrap;font-size:15px;padding:10px 14px}
+.wrongbox .hint{display:block;margin-top:6px;color:#7a2b26;font-weight:700}
+.wrongbox .mine{margin-top:8px}
+.lt.bad-sub{background:#fde6e4;border:2px solid #e04a3f;color:#b42318}
+.lt.gap{background:#fff;border:2px dashed #e04a3f;color:#e04a3f}
+.wrongbox .lt{color:var(--ink)}.wrongbox .lt.bad-sub,.wrongbox .lt.bad,.wrongbox .lt.gap{color:#b42318}
