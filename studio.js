@@ -7,14 +7,13 @@ const worldStyle = {
   phone: ['phone-call', '#ffe0d1', '#943e22'],
   stories: ['notebook-pen', '#d9e9fe', '#29588c']
 };
-const integration=window.LERNSTUDIO_EMBED||null;
 const KEY='folio-studio-v1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=n=>'<i class="icon" aria-hidden="true" data-lucide="'+n+'"></i>';
 const act=(a,label,style='btn',id='')=>'<button class="'+style+'" data-action="'+a+'" data-id="'+esc(id)+'">'+label+'</button>';
 const main=document.querySelector('#main');
 let storageOK=true;
-function read(key){if(integration)return key===KEY?integration.readState():null;try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}}
+function read(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}}
 function initial(){
   const data=read(KEY);
   if(data?.version===1 && data.cards && Array.isArray(data.history))return data;
@@ -26,7 +25,7 @@ function initial(){
   return state;
 }
 const state=initial();
-function save(){if(integration){integration.saveState(state);return}try{localStorage.setItem(KEY,JSON.stringify(state));storageOK=true}catch{if(storageOK)notify('Dieser Browser kann den Lernstand gerade nur für diese Sitzung behalten.');storageOK=false}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storageOK=true}catch{if(storageOK)notify('Dieser Browser kann den Lernstand gerade nur für diese Sitzung behalten.');storageOK=false}}
 const item=id=>state.cards[id]??(state.cards[id]={});
 function day(t){return new Date(t).toLocaleDateString('sv-SE')}
 function secure(c){return c?.write==='ok' && (c.validated||[]).length>=2}
@@ -165,7 +164,7 @@ function install(o){
     :o.ids.flatMap(id=>[{kind:'learn',id},{kind:'write',id}]);
   // Einfach gehalten: pro Wort nur ansehen/anhören, dann selbst schreiben. Keine Zusatzaufgaben.
   const finalIds=[];
-  state.session={...o,runId:integration?integration.newRunId():undefined,steps,index:0,phase:'ask',draft:'',results:{},finalIds,mode:state.mode};pending=null;save();navigate('run');
+  state.session={...o,steps,index:0,phase:'ask',draft:'',results:{},finalIds,mode:state.mode};pending=null;save();navigate('run');
 }
 function replaceView(){shell('Rundenwechsel',intro('Eine Runde ist noch offen.')+'<div class="panel stack"><p>Du kannst „'+esc(session().label)+'“ fortsetzen oder „'+esc(pending.label)+'“ beginnen. Bisher gespeicherte Lernergebnisse bleiben erhalten.</p><div class="actions">'+act('resume','Offene Runde fortsetzen')+act('replace','Neue Runde beginnen','ghost')+'</div></div>')}
 function current(){return session()?.steps[session().index]}
@@ -182,7 +181,7 @@ function advance(){
   if(s.index===s.steps.length){
     if(!s.test && s.finalIds.length){s.steps.push(...shuffle(s.finalIds).map(id=>({id,kind:'write'})));s.finalIds=[]}
     else if(s.test && s.mode==='paper'&&!s.checked){s.steps.push(...s.ids.map((id,i)=>({id,kind:'grade',number:i+1})));s.checked=true}
-    else {s.phase='done';state.history.push({runId:s.runId,time:Date.now(),test:!!s.test,world:s.world,score:Object.values(s.results).filter(r=>r==='known').length,total:s.ids.length});}
+    else {s.phase='done';state.history.push({time:Date.now(),test:!!s.test,world:s.world,score:Object.values(s.results).filter(r=>r==='known').length,total:s.ids.length});}
   }
   save();render();
 }
@@ -447,7 +446,7 @@ document.addEventListener('click',e=>{
   if(['audio','slow','example'].includes(action)){play(id,action==='example'?'example':'word',action==='slow'?0.76:1,btn);return}
   if(['world','single','retry','probe'].includes(action)){begin(proposed(action,id));return}
   switch(action){
-    case 'record':if(!integration)toggleRecording(btn);break;
+    case 'record':toggleRecording(btn);break;
     case 'explain':explainCard(btn,id);break;
     case 'nav':navigate(id);break;
     case 'filter':filter=id;render();break;
@@ -474,13 +473,10 @@ document.addEventListener('click',e=>{
   }
 });
 let recorder=null,recordURL=null,micStream=null,micTimer=null;
-if(integration)integration.ready({
-  restore(){stopAudio();releaseRecording();const fresh=initial();Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,fresh);page=state.session&&state.session.phase!=='done'?'run':'studio';render()},
-});
 render();
 
 let explanationsEnabled=false;
-if(!integration && location.protocol==='http:' && location.hostname==='127.0.0.1'){
+if(location.protocol==='http:' && location.hostname==='127.0.0.1'){
   fetch('/api/status').then(r=>r.json()).then(v=>{explanationsEnabled=v.enabled===true;if(explanationsEnabled&&page==='run'&&current()?.kind==='learn')render()}).catch(()=>{});
 }
 async function explainCard(button,id){

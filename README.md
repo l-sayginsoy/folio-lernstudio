@@ -69,9 +69,3 @@ Mit KI-Erklärungen (macOS mit Apple Intelligence): `Lernstudio starten.command`
 ## Änderungen veröffentlichen
 
 Alles, was auf `main` hochgeladen wird, ist nach etwa einer Minute online (GitHub Pages).
-
-## Lokale Einbindung in den Familienplaner
-
-Der Familienplaner verwendet dasselbe Studio über einen optionalen `window.LERNSTUDIO_EMBED`-Adapter. Ohne Adapter läuft dieses Projekt unverändert mit seinem bisherigen lokalen Speicher. Im eingebetteten Modus wird ausschließlich ein isolierter Beispielstand aus der offenen Planerseite verwendet; bestehender Standalone-Lernstand und Audioaufnahmen werden nicht verändert. Mikrofon und optionaler Erklärdienst sind deaktiviert. Diese Änderungen wurden nicht online veröffentlicht.
-
-Einstieg: Familienplaner unter `http://127.0.0.1:8741/design/` → Lernen → Englisch-Lernstudio. Umsetzung, Grenzen und Prüfungen stehen in `../Familienplaner/anwendung/Lernbegleiter-Anbindung.md`. Der Adapter wurde einschließlich Audio, einer vollständigen Schreibrunde und Fortsetzen sowie dem unveränderten eigenständigen Betrieb getestet. Browser-Beispielstände im Planer gelten bis zu dessen Neuladen, noch ohne geräteübergreifende Speicherung.
