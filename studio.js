@@ -7,13 +7,14 @@ const worldStyle = {
   phone: ['phone-call', '#ffe0d1', '#943e22'],
   stories: ['notebook-pen', '#d9e9fe', '#29588c']
 };
+const integration=window.LERNSTUDIO_EMBED||null;
 const KEY='folio-studio-v1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=n=>'<i class="icon" aria-hidden="true" data-lucide="'+n+'"></i>';
 const act=(a,label,style='btn',id='')=>'<button class="'+style+'" data-action="'+a+'" data-id="'+esc(id)+'">'+label+'</button>';
 const main=document.querySelector('#main');
 let storageOK=true;
-function read(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}}
+function read(key){if(integration)return key===KEY?integration.readState():null;try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}}
 function initial(){
   const data=read(KEY);
   if(data?.version===1 && data.cards && Array.isArray(data.history))return data;
@@ -25,11 +26,11 @@ function initial(){
   return state;
 }
 const state=initial();
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storageOK=true}catch{if(storageOK)notify('Dieser Browser kann den Lernstand gerade nur für diese Sitzung behalten.');storageOK=false}}
+function save(){if(integration){integration.saveState(state);return}try{localStorage.setItem(KEY,JSON.stringify(state));storageOK=true}catch{if(storageOK)notify('Dieser Browser kann den Lernstand gerade nur für diese Sitzung behalten.');storageOK=false}}
 const item=id=>state.cards[id]??(state.cards[id]={});
 function day(t){return new Date(t).toLocaleDateString('sv-SE')}
 function secure(c){return c?.write==='ok' && (c.validated||[]).length>=2}
-function status(id){const c=state.cards[id];if(secure(c))return 'Wiederholt gekonnt';if(c?.write==='retry')return 'Weiter üben';if(c?.write==='ok'||c?.done)return 'Selbst geschrieben';return c?.introduced?'Kennengelernt':'Offen'}
+function status(id){const c=state.cards[id];if(secure(c))return 'An zwei Tagen gekonnt';if(c?.write==='retry')return 'Weiter üben';if(c?.write==='ok')return 'Selbst gewusst';return c?.done?'Geübt':'Offen'}
 function normalize(s){return s.normalize('NFKC').toLowerCase().replace(/[’‘]/g,"'").replace(/…|\.{2,}/g,' ').replace(/\b(i|we|they|you)'ve\b/g,'$1 have').replace(/\b(he|she)\x27s (?=found|started|met)/g,'$1 has ').replace(/\b(who|this|that)'s\b/g,'$1 is').replace(/you're/g,'you are').replace(/don't/g,'do not').replace(/hasn't/g,'has not').replace(/haven't/g,'have not').replace(/mustn't/g,'must not').replace(/needn't/g,'need not').replace(/[.!?,:;]/g,'').replace(/\s+/g,' ').trim()}
 function correct(w,v){const n=normalize(v);return w.ans.some(a=>normalize(a)===n)}
 function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
@@ -75,7 +76,7 @@ function shell(title,html){
   document.querySelector('#rail').innerHTML=`<div class="navwrap">
     <button class="brand" data-action="nav" data-id="studio" aria-label="Zur Startseite des Lernstudios"><span class="brandmark">${icon('layers-3')}</span><strong>Lernstudio</strong></button>
     <nav aria-label="Hauptmenü">${navigation}</nav>
-    <span class="subject">${icon('book-open')} Englisch</span>
+    <button class="parentbtn${page==='parents'?' active':''}" ${page==='parents'?'aria-current="page"':''} data-action="nav" data-id="parents">${icon('user-round-cog')}<span>Für Eltern</span></button>
   </div>`;
   main.innerHTML='<div class="wrap">'+html+'</div>';
   lucide.createIcons();
@@ -94,11 +95,11 @@ function home(){
   const london=s?s.world==='london':target.id==='london';
   const artWorld=s?s.world:target.id;
   const art=london?'<img class="hero-art" src="assets/london-studio.jpg" alt="">':`<div class="resume-art" aria-hidden="true">${icon(artWorld?worldStyle[artWorld][0]:'book-open')}</div>`;
-  shell('Lernstudio',`<header class="intro home-intro"><div><h1>Dein Lernstudio</h1><p>Englisch aus deinem Schulbuch · Seiten 154–156</p></div><span class="test-date">${icon('calendar-days')} Test am 23. November</span></header>
+  shell('Lernstudio',`<header class="intro home-intro"><div><h1>Dein Lernstudio</h1><p>Englisch aus deinem Schulbuch · Seiten 154–156</p></div></header>
     <section class="hero">${art}<div class="hero-content"><div class="eyebrow">${icon('headphones')}${s?'Deine offene Runde':'Kapitel '+targetNo+' von '+SCENES.length}</div>
     <h2>${s?esc(s.label):esc(target.name)}</h2><p>${s?'Mach an der Stelle weiter, an der du aufgehört hast.':totalOpen?'Noch '+openIn(target)+' von '+target.ids.length+' Wortkarten offen. Eine Runde hat drei Wortkarten.':'Alle Kapitel geschafft! Wiederhol, was du magst.'}</p>
     ${act(s?'resume':'world',(s?'Runde fortsetzen':'Runde starten')+icon('arrow-right'),'btn',target.id)}</div></section>
-    <ol class="howto"><li><b>Ansehen und anhören:</b> Du siehst das Wort und tippst auf „Anhören“.</li><li><b>Selbst schreiben:</b> Du schreibst das Wort auf Englisch.</li><li><b>Grüner Haken:</b> Richtig! Wenn nicht, zeigt dir die App die Lösung und du schreibst sie ab.</li></ol>
+    <ol class="howto"><li><b>Ansehen und anhören:</b> Du siehst das Wort und tippst auf „Anhören“.</li><li><b>Selbst schreiben:</b> Du schreibst das Wort auf Englisch. Wörter, die du schon geübt hast, schreibst du gleich aus dem Kopf.</li><li><b>Grüner Haken:</b> Richtig! Wenn nicht, zeigt dir die App, wo der Fehler ist, und hilft dir.</li></ol>
     <div class="section-head"><h2>Deine Kapitel</h2><span class="caption">${totalOpen?'Noch '+totalOpen+' Wortkarten offen':'Alles geschafft'}</span></div>
     <div class="worlds">${worlds}</div>
     <div class="studiofoot"><div class="row"><span class="collection-icon">${icon('library-big')}</span><div><b>Dein Wortschatz</b><p>${done} von ${WORDS.length} Karten kennengelernt</p></div></div>
@@ -115,14 +116,28 @@ function library(){
 }
 function testView(){shell('Probetest',intro('Dein Probetest','Wie viel kannst du schon selbst schreiben?')+'<section class="panel test-cover"><div class="eyebrow">'+icon('clipboard-list')+' Schriftlich · 9 Aufgaben</div><h2>Drei Seiten, eine Stichprobe.</h2><p>Je drei zufällige Aufgaben von Seite 154, 155 und 156. Auch bisher offene Wörter können vorkommen. Die Lösungen siehst du am Ende.</p>'+modes()+'<div class="actions">'+act('probe','Probetest starten '+icon('arrow-right'))+'<a class="ghost" href="lernblatt-englisch-test.html">'+icon('printer')+' Druckstudio</a></div></section>')}
 function modes(){return '<p class="mode-label">Wie möchtest du schreiben?</p><div class="pills">'+[['type','keyboard','Tastatur'],['paper','pencil','Papier']].map(([k,i,l])=>act('mode',icon(i)+' '+l,'pill '+(state.mode===k?'on':''),k)).join('')+'</div>'}
+// Drei Stufen, überall gleich benannt: geübt → selbst gewusst → an zwei Tagen gekonnt
+const practised=c=>!!c?.done, known=c=>c?.write==='ok';
 function progress(){
   const cards=Object.values(state.cards), tricky=WORDS.filter(w=>state.cards[w.id]?.write==='retry');
-  const facts=[[cards.filter(c=>c.introduced).length+'/'+WORDS.length,'Karten kennengelernt'],[cards.filter(c=>c.write==='ok').length,'Zuletzt selbst geschrieben'],[cards.filter(secure).length,'An zwei Tagen gekonnt']];
-  const tests=state.history.filter(h=>h.test).slice(-3).reverse();
-  shell('Lernstand',intro('Dein Lernstand','Hier siehst du, was schon klappt und was wieder dran ist.')+'<div class="stack"><div class="stats">'+facts.map(([n,t])=>'<div class="stat"><strong>'+n+'</strong><span>'+t+'</span></div>').join('')+'</div><section class="panel stack"><h2>Weiter üben</h2><p>'+ (tricky.length?tricky.map(w=>esc(w.en)).join(' · '):'Hier erscheinen Wörter, für die du zuletzt Hilfe gebraucht hast.')+'</p>'+(tricky.length?'<div>'+act('retry','Kurze Wiederholung starten')+'</div>':'')+'</section><section class="panel stack"><h2>Für Eltern</h2><p>„An zwei Tagen gekonnt“ zählt selbstständige Schreibversuche an verschiedenen Tagen mit mindestens 16 Stunden Abstand. Direkt nach einer Erklärung zählt der Versuch als Übung. Bei Papier bestätigt ihr die Schreibweise selbst.</p><p class="muted">Gehörte Bedeutungen richtig zugeordnet: '+cards.reduce((n,c)=>n+(c.heard||0),0)+'. Lautes Sprechen ist freiwillig und wird nicht bewertet.</p>'+(state.previous?'<p>'+state.previous+' bereits bearbeitete Karten aus dem bisherigen Trainer sind als kennengelernt übernommen.</p>':'')+(tests.length?'<h3>Letzte Probetests</h3>'+tests.map(t=>'<p>'+new Date(t.time).toLocaleDateString('de-DE')+' · '+t.score+' von '+t.total+' richtig</p>').join(''):'')+modes()+'<label><b>Eure Beobachtungen</b><textarea id="notes" rows="3" placeholder="Was hat geholfen?">'+esc(state.notes)+'</textarea></label><div><a class="ghost" href="lernblatt-englisch-test.html">'+icon('printer')+' Druckstudio öffnen</a></div></section></div>');
+  const facts=[[cards.filter(practised).length+'/'+WORDS.length,'Wörter geübt'],[cards.filter(known).length,'Selbst gewusst'],[cards.filter(secure).length,'An zwei Tagen gekonnt']];
+  shell('Lernstand',intro('Dein Lernstand','Hier siehst du, was schon klappt und was wieder dran ist.')+'<div class="stack"><div class="stats">'+facts.map(([n,t])=>'<div class="stat"><strong>'+n+'</strong><span>'+t+'</span></div>').join('')+'</div><section class="panel stack"><h2>Weiter üben</h2><p>'+ (tricky.length?tricky.map(w=>'<b lang="en">'+esc(w.en)+'</b>').join(' · '):'Hier erscheinen Wörter, für die du zuletzt Hilfe gebraucht hast.')+'</p>'+(tricky.length?'<div>'+act('retry','Kurze Wiederholung starten '+icon('arrow-right'))+'</div>':'')+'</section></div>');
+}
+function parents(){
+  const tests=state.history.filter(h=>h.test).slice(-5).reverse();
+  const chapters=SCENES.map((w,i)=>{const cs=w.ids.map(id=>state.cards[id]);return '<tr><td>'+(i+1)+'. '+esc(w.name)+'</td><td>'+cs.filter(practised).length+' / '+w.ids.length+'</td><td>'+cs.filter(known).length+'</td><td>'+cs.filter(secure).length+'</td></tr>'}).join('');
+  shell('Für Eltern',intro('Für Eltern','Einstellungen, Ergebnisse und Druckvorlagen an einem Ort.')+'<div class="stack">'
+    +'<section class="panel stack"><h2>Stand nach Kapiteln</h2><div class="tablewrap"><table class="overview"><thead><tr><th>Kapitel</th><th>Geübt</th><th>Selbst gewusst</th><th>An zwei Tagen gekonnt</th></tr></thead><tbody>'+chapters+'</tbody></table></div>'
+    +'<ul class="legend"><li><b>Geübt:</b> in einer Runde richtig geschrieben, nachdem das Wort gezeigt wurde.</li><li><b>Selbst gewusst:</b> beim ersten Versuch richtig, ohne dass das Wort vorher gezeigt wurde (spätere Runde, Wiederholung oder Probetest).</li><li><b>An zwei Tagen gekonnt:</b> selbst gewusst an zwei Tagen mit mindestens 16 Stunden Abstand.</li></ul>'
+    +(state.previous?'<p class="caption">'+state.previous+' Wörter aus dem bisherigen Trainer wurden übernommen.</p>':'')+'</section>'
+    +'<section class="panel stack"><h2>Letzte Probetests</h2>'+(tests.length?tests.map(t=>'<p>'+new Date(t.time).toLocaleDateString('de-DE')+' · <b>'+t.score+' von '+t.total+'</b> richtig</p>').join(''):'<p class="muted">Noch kein Probetest gemacht.</p>')+'</section>'
+    +'<section class="panel stack"><h2>Einstellungen</h2>'+modes()+'<p class="caption">Bei Papier vergleicht ihr die Schreibweise selbst und bestätigt sie in der App.</p></section>'
+    +'<section class="panel stack"><h2>Eure Beobachtungen</h2><label><span class="sr">Eure Beobachtungen</span><textarea id="notes" rows="4" placeholder="Was hat geholfen? Was war schwer?">'+esc(state.notes)+'</textarea></label><p class="caption">Bleibt nur auf diesem Gerät gespeichert.</p></section>'
+    +'<section class="panel stack"><h2>Drucken</h2><p>Wortlisten, Schreibblätter und einen Probetest mit Lösungen auf Papier.</p><div><a class="btn" href="lernblatt-englisch-test.html">'+icon('printer')+' Druckstudio öffnen</a></div></section>'
+    +'</div>');
 }
 function navigate(id){page=id;stopAudio();render();window.scrollTo(0,0);main.focus({preventScroll:true})}
-function render(){({studio:home,library,test:testView,progress,run:runView,replace:replaceView})[page]()}
+function render(){({studio:home,library,test:testView,progress,parents,run:runView,replace:replaceView})[page]()}
 function proposed(action,id){
   if(action==='probe'){
     const ids=shuffle([154,155,156].flatMap(p=>shuffle(WORDS.filter(w=>w.page===p)).slice(0,3).map(w=>w.id)));
@@ -142,12 +157,15 @@ function begin(options){
 function install(o){
   // Ohne „Kennst du das schon?“: jedes neue Wort startet direkt mit Entdecken und Hören, geschrieben wird am Rundenende.
   const listen=id=>({kind:'listen',id,choices:shuffle([id,...shuffle(WORDS.filter(x=>x.id!==id&&x.de!==terms.get(id).de)).slice(0,2).map(x=>x.id)])});
+  // solo: Das Wort wurde in dieser Runde vorher nicht gezeigt. Nur dann zählt ein richtiger erster Versuch als „selbst gewusst“.
+  // In Kapitelrunden kommen schon geübte Wörter deshalb direkt zum Schreiben, neue Wörter weiterhin erst zum Ansehen.
   const steps=o.test?o.ids.map(id=>({kind:'test',id}))
-    :o.label==='Wiederholung'?o.ids.map(id=>({kind:'write',id}))
+    :o.label==='Wiederholung'?o.ids.map(id=>({kind:'write',id,solo:true}))
+    :o.world?o.ids.flatMap(id=>practised(state.cards[id])?[{kind:'write',id,solo:true}]:[{kind:'learn',id},{kind:'write',id}])
     :o.ids.flatMap(id=>[{kind:'learn',id},{kind:'write',id}]);
   // Einfach gehalten: pro Wort nur ansehen/anhören, dann selbst schreiben. Keine Zusatzaufgaben.
   const finalIds=[];
-  state.session={...o,steps,index:0,phase:'ask',draft:'',results:{},finalIds,mode:state.mode};pending=null;save();navigate('run');
+  state.session={...o,runId:integration?integration.newRunId():undefined,steps,index:0,phase:'ask',draft:'',results:{},finalIds,mode:state.mode};pending=null;save();navigate('run');
 }
 function replaceView(){shell('Rundenwechsel',intro('Eine Runde ist noch offen.')+'<div class="panel stack"><p>Du kannst „'+esc(session().label)+'“ fortsetzen oder „'+esc(pending.label)+'“ beginnen. Bisher gespeicherte Lernergebnisse bleiben erhalten.</p><div class="actions">'+act('resume','Offene Runde fortsetzen')+act('replace','Neue Runde beginnen','ghost')+'</div></div>')}
 function current(){return session()?.steps[session().index]}
@@ -164,7 +182,7 @@ function advance(){
   if(s.index===s.steps.length){
     if(!s.test && s.finalIds.length){s.steps.push(...shuffle(s.finalIds).map(id=>({id,kind:'write'})));s.finalIds=[]}
     else if(s.test && s.mode==='paper'&&!s.checked){s.steps.push(...s.ids.map((id,i)=>({id,kind:'grade',number:i+1})));s.checked=true}
-    else {s.phase='done';state.history.push({time:Date.now(),test:!!s.test,world:s.world,score:Object.values(s.results).filter(r=>r==='known').length,total:s.ids.length});}
+    else {s.phase='done';state.history.push({runId:s.runId,time:Date.now(),test:!!s.test,world:s.world,score:Object.values(s.results).filter(r=>r==='known').length,total:s.ids.length});}
   }
   save();render();
 }
@@ -173,11 +191,11 @@ function assess(ok){
   if(step.kind==='test'||step.kind==='grade'){
     s.results[w.id]=ok?'known':'again';record(w,ok,true);advance();return;
   }
-  const fresh=step.kind==='check';
-  record(w,ok,fresh);
+  const fresh=step.kind==='check', solo=fresh||(step.solo&&!s.wrong);
+  record(w,ok,solo);
   if(ok){
     item(w.id).done=true;
-    s.results[w.id]=fresh?'known':step.again?'later':'practised';
+    s.results[w.id]=solo?'known':step.again?'later':'practised';
     s.result=true;s.phase='feedback';save();render();return;
   }
   s.results[w.id]='again';
@@ -277,16 +295,31 @@ function summary(){
   const good=id=>['known','practised','later'].includes(s.results[id]);
   const score=s.ids.filter(good).length;
   const lines=s.ids.map(id=>'<div class="resultline"><span><b lang="en">'+esc(terms.get(id).en)+'</b>'+(s.test&&s.answers?.[id]!==undefined&&!good(id)?'<br><small>Deine Antwort: '+esc(s.answers[id]||'ausgelassen')+'</small>':'')+'</span><span class="'+(good(id)?'ok':'again')+'">'+(good(id)?icon('check'):'kommt nochmal')+'</span></div>').join('');
-  let next='<div class="actions center">'+act('finish','Fertig '+icon('arrow-right'))+'</div>';
+  let next='',primary=act('finish','Fertig '+icon('arrow-right'),'btn big'),side='';
   if(s.world){
     const i=SCENES.findIndex(x=>x.id===s.world),w=SCENES[i],open=openIn(w),after=SCENES[i+1];
     const target=open?w:(after&&openIn(after)?after:SCENES.find(x=>openIn(x)>0));
     const others=SCENES.filter(x=>x.id!==w.id&&openIn(x)>0).map(x=>esc(x.name)+': '+openIn(x)).join(' · ');
     next='<p class="caption center">'+(open?'Kapitel „'+esc(w.name)+'“: noch '+open+' Wörter offen':'Kapitel „'+esc(w.name)+'“ geschafft ✓')+'</p>'
       +(others?'<p class="caption center">Noch offen · '+others+'</p>':'')
-      +'<div class="actions center">'+(target?act('world','Nächste Runde '+icon('arrow-right'),'btn',target.id):'')+(open&&after?act('world','Zum nächsten Kapitel','textbtn',after.id):'')+act('finish','Fertig für jetzt','textbtn')+'</div>';
+      +(open&&after?'<div class="actions center">'+act('world','Lieber zum nächsten Kapitel','textbtn',after.id)+'</div>':'');
+    if(target){primary=act('world','Nächste Runde '+icon('arrow-right'),'btn big',target.id);side=act('finish',icon('house')+' Fertig für jetzt','ghost')}
   }
-  return '<div class="panel exercise stack">'+(score?'<div class="success" role="img" aria-label="Geschafft">'+icon('check')+'</div>':'')+'<h2 class="center">'+(s.test?'Dein Ergebnis':score?'Runde geschafft!':'Runde beendet')+'</h2><p class="large center">'+score+' von '+s.ids.length+' richtig geschrieben</p>'+lines+next+'</div>';
+  return {html:'<div class="panel exercise stack">'+(score?'<div class="success" role="img" aria-label="Geschafft">'+icon('check')+'</div>':'')+'<h2 class="center">'+(s.test?'Dein Ergebnis':score?'Runde geschafft!':'Runde beendet')+'</h2><p class="large center">'+score+' von '+s.ids.length+' richtig geschrieben</p>'+lines+next+'</div>',primary,side};
+}
+// Feste Leiste unten in der Runde: rechts (Handy: oben, ganze Breite) immer der eine Hauptknopf,
+// daneben klein „Zurück“ und, wo es etwas anderes bewirkt, „Überspringen“.
+function runbar(primary,side){
+  if(!primary&&!side)return '';
+  return '<div class="runbar"><div class="runbar-in">'+(primary?'<div class="runbar-main">'+primary+'</div>':'')+(side?'<div class="runbar-side">'+side+'</div>':'')+'</div></div>';
+}
+// Ein Punkt pro Wort der Runde: gefüllt = erledigt, Ring = gerade dran, grau = kommt noch
+function dots(s,st){
+  const cur=s.ids.indexOf(st.id);
+  return '<div class="dots" role="img" aria-label="Wort '+(cur+1)+' von '+s.ids.length+'">'+s.ids.map(id=>{
+    const k=id===st.id?'cur':s.steps.slice(s.index).some(x=>x.id===id)||s.finalIds.includes(id)?'':'done';
+    return '<span class="dot '+k+'"></span>';
+  }).join('')+'</div>';
 }
 function highlight(w){const bits=(w.hl||[]).filter(x=>w.en.includes(x));if(!bits.length)return esc(w.en);let t=w.en,html='';while(t.length){const hit=bits.find(x=>t.startsWith(x));html+=hit?'<mark>'+esc(hit)+'</mark>':esc(t[0]);t=t.slice(hit?hit.length:1)}return html}
 // Vergleich Buchstabe für Buchstabe: Was hat er geschrieben, was fehlt, was ist anders?
@@ -328,52 +361,58 @@ function spellingHelp(w,attempt){
 }
 function runView(){
   const s=session();if(!s){navigate('studio');return}
-  if(s.phase==='done'){shell(s.label,'<section class="training">'+summary()+'</section>');return}
+  if(s.phase==='done'){const r=summary();shell(s.label,'<section class="training">'+r.html+'</section>'+runbar(r.primary,r.side));return}
   const st=current(),w=terms.get(st.id),paper=s.mode==='paper';
   const bad=(s.phase==='retry'?s.retryWrong:s.wrong)?' wrong':'';
   const lab={check:'Schon bekannt?',learn:'Entdecken',listen:'Hörverständnis',write:'Aus dem Kopf',test:'Probetest',grade:'Papier vergleichen',scene:'Vor Ort'}[st.kind];
-  let inner='';
+  // Pro Bildschirm genau ein Hauptknopf (primary) in der festen Leiste unten.
+  const go=(a,label)=>act(a,label+' '+icon('arrow-right'),'btn big');
+  const check=label=>'<button type="submit" form="writing" class="btn big">'+label+' '+icon('check')+'</button>';
+  const field='<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Hier schreiben …" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></form>';
+  const pair=(yes,no,yl,nl)=>'<div class="choicepair">'+act(yes,icon('check')+' '+yl,'answer yes')+act(no,icon('rotate-ccw')+' '+nl,'answer no')+'</div>';
+  let inner='',primary='';
   if(st.kind==='scene'){
     inner='<h2>Vor Ort</h2><p class="large">'+esc(st.question)+'</p>';
-    if(s.chosen)inner+='<div class="helper">'+(s.chosen===st.answer?'Genau. ':'Hier passt: ')+esc(st.answer)+'</div><div class="actions">'+act('next','Weiter')+'</div>';
+    if(s.chosen){inner+='<div class="helper">'+(s.chosen===st.answer?'Genau. ':'Hier passt: ')+esc(st.answer)+'</div>';primary=go('next','Weiter')}
     else inner+='<div class="choices">'+st.options.map(opt=>act('scene',esc(opt),'answer',opt)).join('')+'</div>';
   }else if(st.kind==='grade'||s.phase==='compare'){
-    inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche '+(st.kind==='grade'?'Antwort '+st.number:'deine Antwort')+' auf dem Papier. Stimmen die Wörter und die Schreibweise?</p>'+(w.ans.length>1?'<details><summary>Weitere passende Formen</summary>'+w.ans.slice(1).map(esc).join(' · ')+'</details>':'')+'<div class="actions">'+act('yes','Stimmt überein')+act('no','Noch üben','ghost')+'</div>';
+    inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche '+(st.kind==='grade'?'Antwort '+st.number:'deine Antwort')+' auf dem Papier. Stimmen die Wörter und die Schreibweise?</p>'+(w.ans.length>1?'<details><summary>Weitere passende Formen</summary>'+w.ans.slice(1).map(esc).join(' · ')+'</details>':'')+pair('yes','no','Stimmt überein','Noch üben');
   }else if(s.phase==='help'){
     inner='<h2>'+esc(w.prompt)+'</h2><p>So schreibt man es:</p><p class="solution" lang="en">'+highlight(w)+'</p>'+audioButtons(w)
       +(s.attempt?spellingHelp(w,s.attempt):'')+(w.tip?'<div class="tipbox">'+icon('sparkles')+'<span><b>Merkhilfe:</b> '+esc(w.tip)+'</span></div>':'')
-      +'<p><b>Merk dir das Wort.</b> Dann deckst du es ab und schreibst es selbst.</p><div class="actions">'+act('cover','Ich hab’s mir gemerkt '+icon('arrow-right'))+'</div>';
+      +'<p><b>Merk dir das Wort.</b> Dann deckst du es ab und schreibst es selbst.</p>';
+    primary=go('cover','Ich hab’s mir gemerkt');
   }else if(s.phase==='retry'){
-    inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(s.retryWrong?wrongBox(w,s.retryWrong,paper,s.draft):'')+(paper?'<p class="helper">Schreib es auf dein Papier.</p><div class="actions">'+act('submit','Mit Lösung vergleichen')+'</div>'
-      :'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">Antwort prüfen</button></form>')
-      +(s.retryWrong?'<div class="actions">'+act('showhelp','Lösung nochmal ansehen','textbtn')+'</div>':'');
+    inner='<h2>'+esc(w.prompt)+'</h2><p><b>Jetzt du:</b> Schreib es aus dem Kopf auf Englisch.</p>'+(s.retryWrong?wrongBox(w,s.retryWrong,paper,s.draft):'')+(paper?'<p class="helper">Schreib es auf dein Papier.</p>':field)
+      +(s.retryWrong?'<div class="actions">'+act('showhelp',icon('lightbulb')+' Lösung nochmal ansehen','ghost helpbtn')+'</div>':'');
+    primary=paper?go('submit','Mit Lösung vergleichen'):check('Antwort prüfen');
   }else if(s.phase==='retrycompare'){
-    inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche mit deinem Papier. Stimmt jeder Buchstabe?</p><div class="actions">'+act('retryyes','Stimmt')+act('retryno','Noch nicht','ghost')+'</div>';
+    inner='<h2 lang="en">'+highlight(w)+'</h2><p>Vergleiche mit deinem Papier. Stimmt jeder Buchstabe?</p>'+pair('retryyes','retryno','Stimmt','Noch nicht');
   }else if(s.phase==='feedback'){
-    const yes=s.result;
-    inner=yes?'<div class="success" role="img" aria-label="Richtig">'+icon('check')+'</div><h2 class="center">Richtig!</h2><p class="large center"><b lang="en">'+highlight(w)+'</b></p>'+(s.helped&&!st.again?'<p class="caption center">Am Ende der Runde kommt das Wort noch einmal.</p>':'')+'<div class="actions center">'+act('next','Weiter '+icon('arrow-right'))+'</div>'
-      :'<h2>Schau noch einmal hin.</h2><p class="large"><b lang="en">'+highlight(w)+'</b> · '+esc(w.de)+'</p>'+(s.draft?spellingHelp(w,s.draft):'')+'<div class="actions">'+act('next','Weiter '+icon('arrow-right'))+'</div>';
+    inner=s.result?'<div class="success" role="img" aria-label="Richtig">'+icon('check')+'</div><h2 class="center">Richtig!</h2><p class="solution center" lang="en">'+highlight(w)+'</p>'+(s.helped&&!st.again?'<p class="caption center">Am Ende der Runde kommt das Wort noch einmal.</p>':'')
+      :'<h2>Schau noch einmal hin.</h2><p class="large"><b lang="en">'+highlight(w)+'</b> · '+esc(w.de)+'</p>'+(s.draft?spellingHelp(w,s.draft):'');
+    primary=go('next','Weiter');
   }else if(st.kind==='learn'){
-    inner='<h2 lang="en">'+highlight(w)+'</h2><p class="large">'+esc(w.de)+'</p>'+audioButtons(w)+(w.tip?'<p class="helper">'+esc(w.tip)+'</p>':'')+'<p>Hör es dir an und sag es laut nach.</p><div class="actions">'+act('next','Weiter '+icon('arrow-right'))+'</div>';
+    inner='<h2 lang="en">'+highlight(w)+'</h2><p class="large">'+esc(w.de)+'</p>'+audioButtons(w)+(w.tip?'<p class="helper">'+esc(w.tip)+'</p>':'')+'<p>Hör es dir an und sag es laut nach.</p>';
+    primary=go('next','Weiter');
   }else if(st.kind==='listen'){
     inner='<h2>Was hörst du?</h2><p>Spiel den Ausdruck ab und wähle seine Bedeutung.</p>'+audioButtons(w);
-    if(s.chosen){inner+='<div class="helper">'+(s.chosen===w.id?'Richtig zugeordnet. ':'Hör noch einmal hin. ')+'„'+esc(w.en)+'“ heißt „'+esc(w.de)+'“.</div><div class="actions">'+act('next','Weiter')+'</div>'}
+    if(s.chosen){inner+='<div class="helper">'+(s.chosen===w.id?'Richtig zugeordnet. ':'Hör noch einmal hin. ')+'„'+esc(w.en)+'“ heißt „'+esc(w.de)+'“.</div>';primary=go('next','Weiter')}
     else inner+='<div class="choices">'+st.choices.map(id=>act('listen',esc(terms.get(id).de),'answer',id)).join('')+'</div>'+act('skiplisten','Ohne Ton weiter','textbtn');
   }else{
-    const number=s.ids.indexOf(w.id)+1;
-    const question=st.kind==='test'?'Aufgabe '+number+' von '+s.ids.length:st.kind==='check'?'Kennst du das schon auf Englisch?':'Wie schreibst du das auf Englisch?';
-    inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(s.wrong&&st.kind!=='test'?wrongBox(w,s.wrong,paper,s.lastWrong):'')+(paper?'<p class="helper">'+(st.kind==='test'?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':'<form id="writing"><label class="sr" for="draft">Deine englische Antwort</label><input class="entry'+bad+'" id="draft" lang="en" value="'+esc(s.draft)+'" placeholder="Deine englische Antwort" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit" class="btn submit">'+(st.kind==='test'?'Antwort speichern':'Antwort prüfen')+'</button></form>')+'<div class="actions">'+(paper?act('submit',st.kind==='test'?'Antwort notiert':'Mit Lösung vergleichen'):'')+act('unknown',st.kind==='check'?'Zeig es mir':st.kind==='test'?'Auslassen':'Ich brauche Hilfe','textbtn')+'</div>';
+    const number=s.ids.indexOf(w.id)+1, test=st.kind==='test';
+    const question=test?'Aufgabe '+number+' von '+s.ids.length:st.kind==='check'?'Kennst du das schon auf Englisch?':'Wie schreibst du das auf Englisch?';
+    const second=test?act('unknown',icon('skip-forward')+' Weiß ich nicht – auslassen','ghost'):act('unknown',icon('lightbulb')+' '+(st.kind==='check'?'Zeig es mir':'Ich brauche Hilfe'),'ghost helpbtn');
+    inner='<h2>'+esc(w.prompt)+'</h2><p>'+question+'</p>'+(s.wrong&&!test?wrongBox(w,s.wrong,paper,s.lastWrong):'')+(paper?'<p class="helper">'+(test?'Schreib die Antwort neben Nummer '+number+' auf dein Blatt.':'Schreib deine Antwort auf Papier und decke frühere Versuche ab.')+'</p>':field)+'<div class="actions">'+second+'</div>';
     if(st.kind==='check')inner+=modes();
+    primary=paper?go('submit',test?'Antwort notiert':'Mit Lösung vergleichen'):check(test?'Antwort speichern':'Antwort prüfen');
   }
-  const total=s.steps.length+s.finalIds.length;
-  const world=s.world?SCENES.find(x=>x.id===s.world):null;
   const position=st.again?'Nochmal üben':'Wort '+(s.ids.indexOf(w.id)+1)+' von '+s.ids.length;
-  const progress=s.index/total*100;
-  const canBack=s.index>0;
-  const canLater=['listen','write','test','grade','scene'].includes(st.kind)&&(s.index<s.steps.length-1||s.finalIds.length>0);
-  const canSkip=s.phase!=='feedback'&&['learn','write','test','grade'].includes(st.kind);
-  const stepnav='<div class="stepnav">'+(canBack?act('back',icon('arrow-left')+' Zurück','ghost'):'<span></span>')+(canSkip?act('skip','Zur nächsten Aufgabe '+icon('arrow-right'),'ghost'):'')+'</div>';
-  shell(s.label,'<section class="training"><div class="trainer-top"><span class="row">'+(s.world?stamp(s.world):icon('book-open'))+'<span><strong>'+esc(s.label)+'</strong><small class="stepcount">'+esc(position)+'</small></span></span>'+act('pause',icon('pause')+' Pause','ghost')+'</div><div class="track" aria-label="Fortschritt"><i style="width:'+progress+'%"></i></div><article class="panel exercise"><div class="eyebrow">'+icon('bookmark')+' '+lab+(w?' · Seite '+w.page:' · '+esc(s.label))+'</div>'+inner+'</article>'+stepnav+'</section>');
+  // „Zurück“ nicht nach einer gelösten Aufgabe; „Überspringen“ nur beim Schreiben, wo es etwas anderes tut als der Hauptknopf.
+  const canBack=s.index>0&&s.phase!=='feedback';
+  const canSkip=st.kind==='write'&&['ask','help','retry'].includes(s.phase);
+  const side=(canBack?act('back',icon('arrow-left')+' Zurück','ghost small'):'')+(canSkip?act('skip','Überspringen '+icon('skip-forward'),'ghost small'):'');
+  shell(s.label,'<section class="training"><div class="trainer-top"><span class="row">'+(s.world?stamp(s.world):icon('book-open'))+'<span><strong>'+esc(s.label)+'</strong><small class="stepcount">'+esc(position)+'</small></span></span>'+act('pause',icon('pause')+' Pause','ghost')+'</div>'+dots(s,st)+'<article class="panel exercise"><div class="eyebrow">'+icon('bookmark')+' '+lab+(w?' · Seite '+w.page:' · '+esc(s.label))+'</div>'+inner+'</article></section>'+runbar(primary,side));
 }
 function submit(){
   const s=session(),st=current();
@@ -408,7 +447,7 @@ document.addEventListener('click',e=>{
   if(['audio','slow','example'].includes(action)){play(id,action==='example'?'example':'word',action==='slow'?0.76:1,btn);return}
   if(['world','single','retry','probe'].includes(action)){begin(proposed(action,id));return}
   switch(action){
-    case 'record':toggleRecording(btn);break;
+    case 'record':if(!integration)toggleRecording(btn);break;
     case 'explain':explainCard(btn,id);break;
     case 'nav':navigate(id);break;
     case 'filter':filter=id;render();break;
@@ -435,10 +474,13 @@ document.addEventListener('click',e=>{
   }
 });
 let recorder=null,recordURL=null,micStream=null,micTimer=null;
+if(integration)integration.ready({
+  restore(){stopAudio();releaseRecording();const fresh=initial();Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,fresh);page=state.session&&state.session.phase!=='done'?'run':'studio';render()},
+});
 render();
 
 let explanationsEnabled=false;
-if(location.protocol==='http:' && location.hostname==='127.0.0.1'){
+if(!integration && location.protocol==='http:' && location.hostname==='127.0.0.1'){
   fetch('/api/status').then(r=>r.json()).then(v=>{explanationsEnabled=v.enabled===true;if(explanationsEnabled&&page==='run'&&current()?.kind==='learn')render()}).catch(()=>{});
 }
 async function explainCard(button,id){

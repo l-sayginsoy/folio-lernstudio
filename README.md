@@ -25,11 +25,23 @@ Die App läuft komplett im Browser, auf Handy und Laptop. Der Lernstand wird nur
 
 ## Ablauf einer Runde
 
-1. Für jedes der 3 Wörter: **Entdecken** (Wort, Bedeutung, anhören, nachsprechen), dann **Hören** (Bedeutung zum gehörten Wort wählen).
-2. Eine kleine Alltagsszene.
-3. Am Ende schreibt er alle 3 Wörter **aus dem Kopf**: per Tastatur (automatische Prüfung) oder auf Papier (Selbstvergleich).
+1. **Neue Wörter:** zuerst **Entdecken** (Wort, Bedeutung, anhören, nachsprechen), dann sofort selbst schreiben.
+2. **Schon geübte Wörter** kommen in Kapitelrunden direkt zum Schreiben, ohne sie vorher zu zeigen.
+3. Bei einem Fehler zeigt die App, wo er steckt. Mit „Ich brauche Hilfe“ sieht er die Lösung, merkt sie sich und schreibt sie aus dem Kopf. Am Ende der Runde kommt das Wort noch einmal.
 
-„Wiederholt gekonnt“ zählt erst, wenn ein Wort an zwei Tagen mit mindestens 16 Stunden Abstand selbstständig richtig geschrieben wurde.
+Geschrieben wird per Tastatur (automatische Prüfung) oder auf Papier (Selbstvergleich).
+
+Pro Bildschirm gibt es **einen** Hauptknopf, immer unten in derselben Leiste. Daneben stehen nur „Zurück“ und beim Schreiben „Überspringen“.
+
+## Lernstand
+
+Drei Stufen, überall gleich benannt:
+
+- **Geübt:** in einer Runde richtig geschrieben, nachdem das Wort gezeigt wurde.
+- **Selbst gewusst:** beim ersten Versuch richtig, ohne dass das Wort in dieser Runde vorher gezeigt wurde (spätere Kapitelrunde, Wiederholung, Probetest).
+- **An zwei Tagen gekonnt:** selbst gewusst an zwei Tagen mit mindestens 16 Stunden Abstand.
+
+Einstellungen, Probetest-Ergebnisse, Notizen und das Druckstudio liegen im Bereich **Für Eltern** (Knopf oben rechts).
 
 ## Festgelegte Entscheidungen der Eltern
 
@@ -57,3 +69,9 @@ Mit KI-Erklärungen (macOS mit Apple Intelligence): `Lernstudio starten.command`
 ## Änderungen veröffentlichen
 
 Alles, was auf `main` hochgeladen wird, ist nach etwa einer Minute online (GitHub Pages).
+
+## Lokale Einbindung in den Familienplaner
+
+Der Familienplaner verwendet dasselbe Studio über einen optionalen `window.LERNSTUDIO_EMBED`-Adapter. Ohne Adapter läuft dieses Projekt unverändert mit seinem bisherigen lokalen Speicher. Im eingebetteten Modus wird ausschließlich ein isolierter Beispielstand aus der offenen Planerseite verwendet; bestehender Standalone-Lernstand und Audioaufnahmen werden nicht verändert. Mikrofon und optionaler Erklärdienst sind deaktiviert. Diese Änderungen wurden nicht online veröffentlicht.
+
+Einstieg: Familienplaner unter `http://127.0.0.1:8741/design/` → Lernen → Englisch-Lernstudio. Umsetzung, Grenzen und Prüfungen stehen in `../Familienplaner/anwendung/Lernbegleiter-Anbindung.md`. Der Adapter wurde einschließlich Audio, einer vollständigen Schreibrunde und Fortsetzen sowie dem unveränderten eigenständigen Betrieb getestet. Browser-Beispielstände im Planer gelten bis zu dessen Neuladen, noch ohne geräteübergreifende Speicherung.

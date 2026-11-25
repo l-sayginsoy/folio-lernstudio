@@ -147,3 +147,46 @@ button[data-playing]{background:var(--soft);border-color:var(--accent);color:var
 .lt.bad-sub{background:#fde6e4;border:2px solid #e04a3f;color:#b42318}
 .lt.gap{background:#fff;border:2px dashed #e04a3f;color:#e04a3f}
 .wrongbox .lt{color:var(--ink)}.wrongbox .lt.bad-sub,.wrongbox .lt.bad,.wrongbox .lt.gap{color:#b42318}
+/* Elternbereich: echter Knopf oben rechts statt „Englisch“-Schild */
+.parentbtn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;flex:none;min-height:44px;padding:8px 14px;border-radius:12px;border:1px solid #cfd3e2;background:#fff;font-size:14px;font-weight:650;color:var(--ink)}
+.parentbtn .icon{width:18px;height:18px;color:var(--accent)}
+.parentbtn:hover{background:#f2f0ff}.parentbtn.active{background:var(--soft);border-color:#9587d5;color:#443098}
+.focused .parentbtn{display:none}
+.overview{width:100%;border-collapse:collapse;font-size:15px}.tablewrap{overflow-x:auto}
+.overview th,.overview td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}
+.overview th{font-size:13px;color:var(--muted);font-weight:650}.overview td+td,.overview th+th{text-align:center}.overview td+td{white-space:nowrap}.overview th+th{width:18%}
+.legend{margin:0;padding-left:20px;display:grid;gap:6px;color:#3d4357;font-size:14px}
+/* Fortschritt in der Runde: ein großer Punkt pro Wort */
+.dots{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 16px}
+.dot{width:22px;height:22px;border-radius:50%;background:#e1e1ed}
+.dot.done{background:var(--accent)}
+.dot.cur{background:#fff;box-shadow:inset 0 0 0 5px var(--accent);transform:scale(1.15)}
+/* Feste Knopfleiste unten in der Runde: ein Hauptknopf, immer an derselben Stelle */
+.runbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px #2927500d;padding:12px clamp(18px,4vw,54px) calc(12px + env(safe-area-inset-bottom))}
+.runbar-in{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.runbar-main{order:2;margin-left:auto}
+.runbar-side{order:1;display:flex;gap:8px;flex-wrap:wrap}
+.btn.big{min-height:56px;padding:14px 28px;font-size:18px;border-radius:14px}
+.btn.big .icon{width:21px;height:21px}
+.ghost.small{font-size:15px;padding:9px 14px}
+.focused main{padding-bottom:120px}
+.focused #notice:not(:empty){bottom:100px}
+/* Hilfe als richtiger Knopf, freundlich in Gelb */
+.helpbtn{background:#fff7e0;border-color:#f0d58a;color:#6b4a00;font-weight:700}
+.helpbtn .icon{color:#c58a00}.helpbtn:hover{background:#ffefc2}
+@media(min-width:651px) and (max-width:850px){.navitem{padding-inline:8px;gap:6px}.navitem .icon{display:none}.brand strong{font-size:20px}.parentbtn{padding:8px 10px}}
+/* Zwei gleichwertige Antworten beim Papier-Vergleich */
+.choicepair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.choicepair .answer{display:flex;align-items:center;justify-content:center;gap:8px;min-height:60px;font-size:17px;font-weight:700}
+.choicepair .yes{border:2px solid #4fbf82;color:#12703f;background:#f1fbf5}
+.choicepair .no{border:2px solid #cfd3e2}
+@media(max-width:650px){
+  .parentbtn{padding:6px 10px;font-size:13px}
+  .runbar{padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+  .runbar-in{flex-direction:column;align-items:stretch;gap:8px}
+  .runbar-main{order:0;margin:0}.runbar-main .btn{width:100%}
+  .runbar-side{justify-content:space-between}
+  .focused main{padding-bottom:150px}
+  .focused #notice:not(:empty){bottom:140px}
+  .overview{font-size:13px}.overview th,.overview td{padding:8px 4px}
+}
